@@ -73,8 +73,15 @@ export default function ChatProvider(props: { children: any }) {
 
   const handleSendMessage = (msg: MessageTextPayload) => {
     try {
+
+    const payload = {
+      to: msg.to,
+      textMessage: msg.textMessage,
+      mediaType: msg.mediaType,
+    }
+
       axios
-        .post("http://localhost:3000/message/send", msg)
+        .post("http://localhost:3000/message/send", payload)
         .then((response) => fetchMessages(msg.to))
         .catch((err) => {
           console.log(err.message);
