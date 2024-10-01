@@ -9,6 +9,8 @@ import {
   SendMessageButton,
   Wrapper,
 } from "./styles";
+import { useChatContext } from "pages/chat/context/chat";
+import { Message, MessageTextPayload } from "../messages-list/data/get-messages";
 
 const attachButtons = [
   { icon: "attachRooms", label: "Choose room" },
@@ -20,6 +22,19 @@ const attachButtons = [
 
 export default function Footer() {
   const [showIcons, setShowIcons] = useState(false);
+  const [messageValue, setMessageValue] = useState('');
+
+  const chatCtx = useChatContext();
+
+  const submitMessage = () => {
+    const newMsg: MessageTextPayload = {
+      to: chatCtx.activeChat?.participantId,
+      textMessage: messageValue,
+      mediaType: 'text',
+    }
+    chatCtx.onSendMessage(newMsg);
+    setMessageValue('');
+  };
 
   return (
     <Wrapper>
@@ -35,8 +50,8 @@ export default function Footer() {
           ))}
         </ButtonsContainer>
       </IconsWrapper>
-      <Input placeholder="Type a message here .." />
-      <SendMessageButton>
+      <Input type="text" value={messageValue} name="message" onChange={e => setMessageValue(e.target.value)} placeholder="Type a message here .." />
+      <SendMessageButton onClick={submitMessage}>
         <Icon id="send" className="icon" />
       </SendMessageButton>
     </Wrapper>

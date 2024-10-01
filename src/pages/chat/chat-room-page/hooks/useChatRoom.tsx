@@ -21,6 +21,7 @@ export default function useChatRoom() {
 
   return {
     activeInbox: chatCtx.activeChat,
+    participantMessages: chatCtx.participantMessages,
     handleMenuOpen,
     handleShowIcon,
     isProfileOpen,

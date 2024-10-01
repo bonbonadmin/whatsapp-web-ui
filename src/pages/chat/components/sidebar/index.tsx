@@ -30,7 +30,7 @@ export default function Sidebar() {
 
   const handleChangeChat = (chat: Inbox) => {
     chatCtx.onChangeChat(chat);
-    navigate("/" + chat.id);
+    navigate("/" + chat.participantId);
   };
 
   return (
@@ -66,7 +66,7 @@ export default function Sidebar() {
           />
         </Actions>
       </Header>
-      <SidebarAlert />
+      {/* <SidebarAlert /> */}
       <SearchField />
       <ContactContainer>
         {chatCtx.inbox.map((inbox) => (

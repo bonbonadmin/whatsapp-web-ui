@@ -1,9 +1,9 @@
-import { forwardRef, useMemo } from "react";
+import { forwardRef, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import Icon from "common/components/icons";
 import useScrollToBottom from "./hooks/useScrollToBottom";
-import { getMessages, Message } from "./data/get-messages";
+import { getMessages, Message, MessageResponse } from "./data/get-messages";
 import {
   ChatMessage,
   ChatMessageFiller,
@@ -17,6 +17,7 @@ import {
 
 type MessagesListProps = {
   onShowBottomIcon: Function;
+  listMessages: Message[];
   shouldScrollToBottom?: boolean;
 };
 
@@ -24,10 +25,7 @@ export default function MessagesList(props: MessagesListProps) {
   const { onShowBottomIcon, shouldScrollToBottom } = props;
 
   const params = useParams();
-  const messages = useMemo(() => {
-    return getMessages();
-    // eslint-disable-next-line
-  }, [params.id]);
+
   const { containerRef, lastMessageRef } = useScrollToBottom(
     onShowBottomIcon,
     shouldScrollToBottom,
@@ -45,8 +43,8 @@ export default function MessagesList(props: MessagesListProps) {
         <Date> TODAY </Date>
       </DateWrapper>
       <MessageGroup>
-        {messages.map((message, i) => {
-          if (i === messages.length - 1) {
+        {props.listMessages.map((message, i) => {
+          if (i === props.listMessages.length - 1) {
             return <SingleMessage key={message.id} message={message} ref={lastMessageRef} />;
           } else {
             return <SingleMessage key={message.id} message={message} />;

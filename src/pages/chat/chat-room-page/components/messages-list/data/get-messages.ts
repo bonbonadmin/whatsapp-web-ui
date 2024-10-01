@@ -1,4 +1,5 @@
 import { MessageStatus } from "common/types/common.type";
+import { useEffect } from "react";
 
 export type Message = {
   id: string;
@@ -7,6 +8,24 @@ export type Message = {
   timestamp: string;
   messageStatus: MessageStatus;
   isOpponent: boolean;
+};
+
+export type MessageResponse = {
+  id: string;
+  message_id: string;
+  participant_id: string;
+  participant_name: string;
+  from_me: number;
+  message_text: string;
+  message_status: number;
+  display_phone_number: string;
+  created_at: Date;
+};
+
+export type MessageTextPayload = {
+  to?: string;
+  textMessage?: string;
+  mediaType?: string;
 };
 
 const messages: Message[] = [
@@ -188,7 +207,7 @@ const messages: Message[] = [
   },
 ];
 
-export function getMessages(): Message[] {
+export function getMessages(id?: string): Message[] {
   const totalMessagesLength = messages.length;
   let randomNumber = Math.floor(Math.random() * totalMessagesLength);
 
