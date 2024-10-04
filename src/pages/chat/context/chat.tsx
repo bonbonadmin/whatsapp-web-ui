@@ -4,8 +4,8 @@ import { Inbox, InboxResponse } from "common/types/common.type";
 import {
   getMessages,
   Message,
+  MessagePayload,
   MessageResponse,
-  MessageTextPayload,
 } from "../chat-room-page/components/messages-list/data/get-messages";
 import axios from "axios";
 
@@ -20,7 +20,8 @@ type ChatContextProp = {
   participantMessages: Message[];
   activeChat?: Inbox;
   onChangeChat: (chat: Inbox) => void;
-  onSendMessage: (message: MessageTextPayload) => void;
+  onSendMessage: (message: MessagePayload) => void;
+  onUploadImage: (file: File) => void;
 };
 
 const initialValue: ChatContextProp = {
@@ -31,6 +32,9 @@ const initialValue: ChatContextProp = {
     throw new Error();
   },
   onSendMessage() {
+    throw new Error();
+  },
+  onUploadImage() {
     throw new Error();
   },
 };
@@ -50,38 +54,18 @@ export default function ChatProvider(props: { children: any }) {
     fetchMessages(chat.participantId);
   };
 
-  // const handleSendMessage = (msg: MessageTextPayload) => {
-  //   try {
-  //     fetch("http://localhost:3000/message/send", {
-  //       method: 'POST',
-  //       body: JSON.stringify(msg),
-  //       headers: {
-  //         "Content-type": "application/json;",
-  //       },
-  //      })
-  //      .then((response) => response.json())
-  //      .then((data) => {
-  //        fetchMessages(msg.to);
-  //      })
-  //     .catch((err) => {
-  //       console.log(err.message);
-  //     });
-  //   } catch (error) {
-  //     console.error('Error fetching messages list:', error);
-  //   }
-  // };
-
-  const handleSendMessage = (msg: MessageTextPayload) => {
+  const handleSendMessage = (msg: MessagePayload) => {
     try {
-
-    const payload = {
-      to: msg.to,
-      textMessage: msg.textMessage,
-      mediaType: msg.mediaType,
-    }
+      const payload = {
+        to: msg.to,
+        textMessage: msg.textMessage,
+        mediaType: msg.mediaType,
+        mediaId: msg.mediaId ?? null,
+        filePath: msg.filePath ?? null,
+      };
 
       axios
-        .post("http://localhost:3000/message/send", payload)
+        .post("https://wa-svc.bonbon.co.id/message/send", payload)
         .then((response) => fetchMessages(msg.to))
         .catch((err) => {
           console.log(err.message);
@@ -94,12 +78,12 @@ export default function ChatProvider(props: { children: any }) {
   const fetchMessages = useMemo(
     () => async (id: any) => {
       try {
-        fetch("/message-inbox/" + id)
-          .then((response) => response.json())
-          .then((data) => {
+        axios
+        .get("https://wa-svc.bonbon.co.id/message-inbox/" + id)
+          .then((response) => {
             const newMessages: Message[] = [];
-            if (data.data.length) {
-              data.data.forEach((value: MessageResponse) => {
+            if (response.data.data.length) {
+              response.data.data.forEach((value: MessageResponse) => {
                 const timeStamp =
                   new Date(value.created_at).getHours() +
                   ":" +
@@ -129,17 +113,17 @@ export default function ChatProvider(props: { children: any }) {
 
   useEffect(() => {
     const intervalId = setInterval(() => {
-      fetch("/message-inbox")
-        .then((response) => response.json())
-        .then((data) => {
+      axios
+        .get("https://wa-svc.bonbon.co.id/message-inbox")
+        .then((response) => {
           const newInbox: Inbox[] = [];
-          data.data.forEach((value: InboxResponse) => {
+          response.data.data.forEach((value: InboxResponse) => {
             const timeStamp =
               new Date(value.created_at).getHours() + ":" + new Date(value.created_at).getMinutes();
             const data: Inbox = {
               id: value.message_id,
               participantId: value.participant_id,
-              name: value.participant_name ?? value.display_phone_number,
+              name: value.participant_name ?? value.participant_id,
               image: "/assets/images/boy4.jpeg",
               lastMessage: value.message_text,
               timestamp: timeStamp,
@@ -158,6 +142,38 @@ export default function ChatProvider(props: { children: any }) {
     return () => clearInterval(intervalId);
   }, []);
 
+  const handleFileUpload = async (file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const headers = {
+        "Content-Type": "multipart/form-data",
+      };
+
+      const uploadMedia = await axios.post("https://wa-svc.bonbon.co.id/message/uploadMedia", formData, {
+        headers,
+      });
+      console.log(uploadMedia);
+
+      const payload = {
+        to: activeChat?.participantId,
+        textMessage: "",
+        mediaType: "image",
+        mediaId: uploadMedia.data.mediaId,
+        filePath: uploadMedia.data.filePath,
+      };
+      console.log(payload);
+
+      await axios.post("https://wa-svc.bonbon.co.id/message/send", payload);
+      fetchMessages(activeChat?.participantId);
+
+
+    } catch (error) {
+      console.error("Error upload image", error);
+    }
+  };
+
   return (
     <ChatContext.Provider
       value={{
@@ -167,6 +183,7 @@ export default function ChatProvider(props: { children: any }) {
         participantMessages,
         onChangeChat: handleChangeChat,
         onSendMessage: handleSendMessage,
+        onUploadImage: handleFileUpload,
       }}
     >
       {children}

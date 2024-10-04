@@ -28,6 +28,14 @@ export type MessageTextPayload = {
   mediaType?: string;
 };
 
+export type MessagePayload = {
+  to?: string;
+  textMessage?: string;
+  mediaType?: string;
+  mediaId?: string;
+  filePath?: string;
+};
+
 const messages: Message[] = [
   {
     id: "1",
