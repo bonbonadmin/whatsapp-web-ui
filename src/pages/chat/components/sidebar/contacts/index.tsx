@@ -33,9 +33,9 @@ export default function InboxContact(props: InboxContactProps) {
 
   return (
     <Contact isActive={isActive} onClick={handleChangeChat}>
-      <AvatarWrapper>
+      {/* <AvatarWrapper>
         <Avatar src={image} />
-      </AvatarWrapper>
+      </AvatarWrapper> */}
       <Content>
         <TopContent>
           <Name>{name}</Name>

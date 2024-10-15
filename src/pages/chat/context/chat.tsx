@@ -21,7 +21,7 @@ type ChatContextProp = {
   activeChat?: Inbox;
   onChangeChat: (chat: Inbox) => void;
   onSendMessage: (message: MessagePayload) => void;
-  onUploadImage: (file: File) => void;
+  onUploadFile: (file: File, msg: string, type: string) => void;
 };
 
 const initialValue: ChatContextProp = {
@@ -34,7 +34,7 @@ const initialValue: ChatContextProp = {
   onSendMessage() {
     throw new Error();
   },
-  onUploadImage() {
+  onUploadFile() {
     throw new Error();
   },
 };
@@ -54,7 +54,7 @@ export default function ChatProvider(props: { children: any }) {
     fetchMessages(chat.participantId);
   };
 
-  const handleSendMessage = (msg: MessagePayload) => {
+  const handleSendMessage = async (msg: MessagePayload) => {
     try {
       const payload = {
         to: msg.to,
@@ -64,12 +64,8 @@ export default function ChatProvider(props: { children: any }) {
         filePath: msg.filePath ?? null,
       };
 
-      axios
-        .post("https://wa-svc.bonbon.co.id/message/send", payload)
-        .then((response) => fetchMessages(msg.to))
-        .catch((err) => {
-          console.log(err.message);
-        });
+      await axios.post("https://wa-svc.bonbon.co.id/message/send", payload);
+      fetchMessages(msg.to);
     } catch (error) {
       console.error("Error fetching messages list:", error);
     }
@@ -131,6 +127,9 @@ export default function ChatProvider(props: { children: any }) {
               notificationsCount: value.unread_msg,
             };
             newInbox.push(data);
+            if (data.participantId === activeChat?.participantId && value.message_status === 0) {
+              fetchMessages(data.participantId);
+            }
           });
           setInbox(newInbox);
         })
@@ -142,7 +141,7 @@ export default function ChatProvider(props: { children: any }) {
     return () => clearInterval(intervalId);
   }, []);
 
-  const handleFileUpload = async (file: File) => {
+  const handleFileUpload = async (file: File, msg: string, type: string) => {
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -158,8 +157,8 @@ export default function ChatProvider(props: { children: any }) {
 
       const payload = {
         to: activeChat?.participantId,
-        textMessage: "",
-        mediaType: "image",
+        textMessage: msg,
+        mediaType: type,
         mediaId: uploadMedia.data.mediaId,
         filePath: uploadMedia.data.filePath,
       };
@@ -183,7 +182,7 @@ export default function ChatProvider(props: { children: any }) {
         participantMessages,
         onChangeChat: handleChangeChat,
         onSendMessage: handleSendMessage,
-        onUploadImage: handleFileUpload,
+        onUploadFile: handleFileUpload,
       }}
     >
       {children}

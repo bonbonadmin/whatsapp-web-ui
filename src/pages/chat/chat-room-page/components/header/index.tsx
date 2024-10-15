@@ -25,9 +25,9 @@ export default function Header(props: HeaderProps) {
 
   return (
     <Container>
-      <AvatarWrapper>
+      {/* <AvatarWrapper>
         <Avatar src={image} />
-      </AvatarWrapper>
+      </AvatarWrapper> */}
       <ProfileWrapper onClick={onProfileClick}>
         <Name>{title}</Name>
         {subTitle && <Subtitle>{subTitle}</Subtitle>}
