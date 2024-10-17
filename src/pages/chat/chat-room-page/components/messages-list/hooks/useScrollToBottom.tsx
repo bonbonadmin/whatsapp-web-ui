@@ -3,7 +3,8 @@ import { useEffect, useRef } from "react";
 export default function useScrollToBottom(
   callback: Function,
   shouldScrollToBottom?: boolean,
-  chatId?: string
+  chatId?: string,
+  testToBottom?: boolean,
 ) {
   const containerRef = useRef(null);
   const lastMessageRef = useRef(null);
@@ -11,11 +12,12 @@ export default function useScrollToBottom(
   useEffect(() => {
     if (lastMessageRef && lastMessageRef.current) {
       const ref = lastMessageRef.current as any;
+      console.log('test bottom scroll function', testToBottom);
 
-      if (shouldScrollToBottom) ref.scrollIntoView({ behavior: "smooth" });
+      if (shouldScrollToBottom || testToBottom) ref.scrollIntoView({ behavior: "smooth" });
       else ref.scrollIntoView({ behavior: "auto" });
     }
-  }, [lastMessageRef, chatId, shouldScrollToBottom]);
+  }, [lastMessageRef, chatId, shouldScrollToBottom, testToBottom]);
 
   useEffect(() => {
     const ref = containerRef.current as any;

@@ -157,6 +157,7 @@ export default function Footer() {
         onChange={(e) => setMessageValue(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Type a message here .."
+        style={{fontSize: '0.90rem'}}
       />
       <SendMessageButton onClick={submitMessage}>
         <Icon id="send" className="icon" />

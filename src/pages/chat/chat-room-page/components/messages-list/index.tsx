@@ -14,23 +14,29 @@ import {
   EncryptionMessage,
   MessageGroup,
 } from "./styles";
+import { useChatContext } from "pages/chat/context/chat";
 
 type MessagesListProps = {
   onShowBottomIcon: Function;
   listMessages: Message[];
   shouldScrollToBottom?: boolean;
+  testToBottom?: boolean;
 };
 
 export default function MessagesList(props: MessagesListProps) {
-  const { onShowBottomIcon, shouldScrollToBottom } = props;
+  const { onShowBottomIcon, shouldScrollToBottom, testToBottom } = props;
+  console.log('test to bottom', testToBottom);
+  const chatCtx = useChatContext();
 
   const params = useParams();
 
   const { containerRef, lastMessageRef } = useScrollToBottom(
     onShowBottomIcon,
     shouldScrollToBottom,
-    params.id
+    params.id,
+    testToBottom
   );
+  // console.log(lastMessageRef);
 
   return (
     <Container ref={containerRef}>
@@ -43,8 +49,8 @@ export default function MessagesList(props: MessagesListProps) {
         <Date> TODAY </Date>
       </DateWrapper>
       <MessageGroup>
-        {props.listMessages.map((message, i) => {
-          if (i === props.listMessages.length - 1) {
+        {props.listMessages.map((message) => {
+          if (message.id === chatCtx.activeChat?.id) {
             return <SingleMessage key={message.id} message={message} ref={lastMessageRef} />;
           } else {
             return <SingleMessage key={message.id} message={message} />;

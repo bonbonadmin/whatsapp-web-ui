@@ -9,6 +9,9 @@ import MessagesList from "./components/messages-list";
 import SearchSection from "./components/search-section";
 import useNavigateToChat from "./hooks/useNavigateToChat";
 import { Container, Body, Background, FooterContainer, ScrollButton } from "./styles";
+import { useChatContext } from "../context/chat";
+import { useEffect } from "react";
+import React from "react";
 
 export default function ChatRoomPage() {
   const {
@@ -26,6 +29,19 @@ export default function ChatRoomPage() {
   } = useChatRoom();
   useNavigateToChat(activeInbox);
 
+  const scrollButton = React.useRef<HTMLButtonElement>(null);
+
+  const chatCtx = useChatContext();
+
+  // useEffect(() => {
+  //   if (chatCtx.firstOpenChat) {
+  //     scrollButton.current?.click();
+  //     setShouldScrollToBottom(true);
+  //     // chatCtx.onFirstOpenChat(false);
+  //   }
+  // // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [chatCtx.firstOpenChat])
+
   return (
     <ChatLayout>
       <Container>
@@ -42,10 +58,11 @@ export default function ChatRoomPage() {
             onShowBottomIcon={handleShowIcon}
             shouldScrollToBottom={shouldScrollToBottom}
             listMessages={participantMessages}
+            testToBottom={chatCtx.firstOpenChat}
           />
           <FooterContainer>
             {isShowIcon && (
-              <ScrollButton onClick={() => setShouldScrollToBottom(true)}>
+              <ScrollButton ref={scrollButton} onClick={() => setShouldScrollToBottom(true)}>
                 <Icon id="downArrow" />
               </ScrollButton>
             )}

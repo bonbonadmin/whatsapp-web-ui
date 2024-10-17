@@ -30,6 +30,7 @@ export default function Sidebar() {
 
   const handleChangeChat = (chat: Inbox) => {
     chatCtx.onChangeChat(chat);
+    chatCtx.onFirstOpenChat(true);
     navigate("/" + chat.participantId);
   };
 

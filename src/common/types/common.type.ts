@@ -14,6 +14,7 @@ export type Inbox = {
 };
 
 export type InboxResponse = {
+  id: string;
   message_id: string;
   participant_id: string;
   participant_name: string;

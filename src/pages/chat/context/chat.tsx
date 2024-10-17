@@ -18,8 +18,10 @@ type ChatContextProp = {
   user: User;
   inbox: Inbox[];
   participantMessages: Message[];
+  firstOpenChat: boolean;
   activeChat?: Inbox;
   onChangeChat: (chat: Inbox) => void;
+  onFirstOpenChat: (condition: boolean) => void;
   onSendMessage: (message: MessagePayload) => void;
   onUploadFile: (file: File, msg: string, type: string) => void;
 };
@@ -28,6 +30,7 @@ const initialValue: ChatContextProp = {
   user: { name: "Jazim Abbas", image: "/assets/images/girl.jpeg" },
   inbox,
   participantMessages: getMessages(),
+  firstOpenChat: false,
   onChangeChat() {
     throw new Error();
   },
@@ -35,6 +38,9 @@ const initialValue: ChatContextProp = {
     throw new Error();
   },
   onUploadFile() {
+    throw new Error();
+  },
+  onFirstOpenChat() {
     throw new Error();
   },
 };
@@ -48,10 +54,15 @@ export default function ChatProvider(props: { children: any }) {
   const [inbox, setInbox] = useState<Inbox[]>(initialValue.inbox);
   const [activeChat, setActiveChat] = useState<Inbox>();
   const [participantMessages, setMessages] = useState<Message[]>(initialValue.participantMessages);
+  const [firstOpenChat, setFirstOpenChat] = useState(false);
 
   const handleChangeChat = (chat: Inbox) => {
     setActiveChat(chat);
     fetchMessages(chat.participantId);
+  };
+
+  const handleFirstOpenChat = (condition: boolean) => {
+    setFirstOpenChat(condition);
   };
 
   const handleSendMessage = async (msg: MessagePayload) => {
@@ -75,7 +86,7 @@ export default function ChatProvider(props: { children: any }) {
     () => async (id: any) => {
       try {
         axios
-        .get("https://wa-svc.bonbon.co.id/message-inbox/" + id)
+          .get("https://wa-svc.bonbon.co.id/message-inbox/" + id)
           .then((response) => {
             const newMessages: Message[] = [];
             if (response.data.data.length) {
@@ -115,13 +126,22 @@ export default function ChatProvider(props: { children: any }) {
           const newInbox: Inbox[] = [];
           response.data.data.forEach((value: InboxResponse) => {
             const timeStamp =
-              new Date(value.created_at).getHours() + ":" + new Date(value.created_at).getMinutes();
+              new Date().toDateString() === new Date(value.created_at).toDateString()
+                ? new Date(value.created_at).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false,
+                  })
+                : new Date(value.created_at).toLocaleDateString('en-GB');
             const data: Inbox = {
-              id: value.message_id,
+              id: value.id,
               participantId: value.participant_id,
               name: value.participant_name ?? value.participant_id,
               image: "/assets/images/boy4.jpeg",
-              lastMessage: value.message_text,
+              lastMessage:
+                value.message_text.length > 50
+                  ? value.message_text.slice(0, 50 - 1) + "...."
+                  : value.message_text,
               timestamp: timeStamp,
               messageStatus: value.message_status === 1 ? "READ" : "DELIVERED",
               notificationsCount: value.unread_msg,
@@ -150,9 +170,13 @@ export default function ChatProvider(props: { children: any }) {
         "Content-Type": "multipart/form-data",
       };
 
-      const uploadMedia = await axios.post("https://wa-svc.bonbon.co.id/message/uploadMedia", formData, {
-        headers,
-      });
+      const uploadMedia = await axios.post(
+        "https://wa-svc.bonbon.co.id/message/uploadMedia",
+        formData,
+        {
+          headers,
+        }
+      );
       console.log(uploadMedia);
 
       const payload = {
@@ -166,8 +190,6 @@ export default function ChatProvider(props: { children: any }) {
 
       await axios.post("https://wa-svc.bonbon.co.id/message/send", payload);
       fetchMessages(activeChat?.participantId);
-
-
     } catch (error) {
       console.error("Error upload image", error);
     }
@@ -180,9 +202,11 @@ export default function ChatProvider(props: { children: any }) {
         inbox,
         activeChat,
         participantMessages,
+        firstOpenChat,
         onChangeChat: handleChangeChat,
         onSendMessage: handleSendMessage,
         onUploadFile: handleFileUpload,
+        onFirstOpenChat: handleFirstOpenChat,
       }}
     >
       {children}
