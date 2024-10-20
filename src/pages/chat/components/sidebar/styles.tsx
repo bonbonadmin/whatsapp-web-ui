@@ -7,6 +7,14 @@ export const SidebarContainer = styled.aside`
   display: flex;
   flex-direction: column;
 
+  @media screen and (min-width: 1301px) {
+    flex: 30%;
+
+    & ~ div {
+      flex: 70%;
+    }
+  }
+
   @media screen and (min-width: 1000px) and (max-width: 1300px) {
     flex: 35%;
 
@@ -15,12 +23,16 @@ export const SidebarContainer = styled.aside`
     }
   }
 
-  @media screen and (min-width: 1301px) {
-    flex: 30%;
+  @media screen and (min-width: 768px) and (max-width: 999px) {
+    flex: 40%;
 
     & ~ div {
-      flex: 70%;
+      flex: 60%;
     }
+  }
+
+  @media screen and (max-width: 767px) {
+    display: none;
   }
 
   .icon {

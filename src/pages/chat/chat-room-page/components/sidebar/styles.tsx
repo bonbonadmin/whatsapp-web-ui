@@ -1,27 +1,44 @@
 import styled, { css } from "styled-components";
 
+// export const Container = styled.aside<{ readonly isOpen: boolean }>`
+//   width: 0;
+//   min-width: 0;
+//   display: flex;
+//   flex-direction: column;
+//   transition: all 0.1s ease;
+//   overflow-x: hidden;
+//   overflow-y: auto;
+//   ${(props) =>
+//     props.isOpen &&
+//     css`
+//       flex: 20%;
+//     `}
+
+//   @media screen and (max-width: 1000px) {
+//     transition: transform 0.1s ease;
+//     transform: translateX(120vw);
+//     position: absolute;
+//     left: 0;
+//     width: 100%;
+//     height: 100%;
+//     z-index: 10;
+//   }
+// `;
 export const Container = styled.aside<{ readonly isOpen: boolean }>`
-  width: 0;
-  min-width: 0;
+  width: ${(props) => (props.isOpen ? '20%' : '0')};
   display: flex;
   flex-direction: column;
-  transition: all 0.1s ease;
+  transition: width 0.3s ease;
   overflow-x: hidden;
   overflow-y: auto;
-  ${(props) =>
-    props.isOpen &&
-    css`
-      flex: 20%;
-    `}
 
-  @media screen and (max-width: 1000px) {
-    transition: transform 0.1s ease;
-    transform: translateX(120vw);
+  @media screen and (max-width: 1024px) {
     position: absolute;
     left: 0;
-    width: 100%;
+    width: ${(props) => (props.isOpen ? '80%' : '0')};
     height: 100%;
     z-index: 10;
+    transition: width 0.3s ease;
   }
 `;
 
