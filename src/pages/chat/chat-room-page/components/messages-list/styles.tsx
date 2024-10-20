@@ -117,6 +117,7 @@ export const ChatMessage = styled.div`
   position: relative;
   white-space: pre-line;
   display: flex;
+  word-break: break-word;
 
   @media screen and (min-width: 1301px) {
     max-width: 65%;
