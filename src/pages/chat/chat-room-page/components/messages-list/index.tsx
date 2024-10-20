@@ -49,12 +49,15 @@ export default function MessagesList(props: MessagesListProps) {
         <Date> TODAY </Date>
       </DateWrapper>
       <MessageGroup>
-        {props.listMessages.map((message) => {
-          if (message.id === chatCtx.activeChat?.id) {
-            return <SingleMessage key={message.id} message={message} ref={lastMessageRef} />;
-          } else {
-            return <SingleMessage key={message.id} message={message} />;
-          }
+        {props.listMessages.map((message, index) => {
+          const isLastMessage = index === props.listMessages.length - 1;
+          return (
+            <SingleMessage
+              key={message.id}
+              message={message}
+              ref={isLastMessage ? lastMessageRef : null}
+            />
+          );
         })}
       </MessageGroup>
     </Container>
