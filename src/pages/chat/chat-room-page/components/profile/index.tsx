@@ -19,21 +19,22 @@ import {
 type ProfileSectionProps = {
   name: string;
   image: string;
+  phoneNumber: string;
 };
 
 export default function ProfileSection(props: ProfileSectionProps) {
-  const { name, image } = props;
+  const { name, image, phoneNumber  } = props;
 
   return (
     <Wrapper>
       <PersonalInfo>
-        <AvatarWrapper>
+        {/* <AvatarWrapper>
           <Avatar src={image} alt="User Profile" />
-        </AvatarWrapper>
+        </AvatarWrapper> */}
         <ProfileName>{name}</ProfileName>
       </PersonalInfo>
 
-      <Section>
+      {/* <Section>
         <HeadingWrapper>
           <Heading>Media, Links and Documents</Heading>
           <MediaButton>
@@ -45,32 +46,32 @@ export default function ProfileSection(props: ProfileSectionProps) {
           <MediaImage src="/assets/images/placeholder.jpeg" alt="Media" />
           <MediaImage src="/assets/images/placeholder.jpeg" alt="Media" />
         </MediaImagesWrapper>
-      </Section>
+      </Section> */}
 
       <Section>
-        <HeadingWrapper>
+        {/* <HeadingWrapper>
           <Heading>About and phone number</Heading>
-        </HeadingWrapper>
+        </HeadingWrapper> */}
         <ul>
-          <AboutItem>
+          {/* <AboutItem>
             Everyone should learn how to program because it teaches you how to think.
-          </AboutItem>
-          <AboutItem>+123456789</AboutItem>
+          </AboutItem> */}
+          <AboutItem>{phoneNumber}</AboutItem>
         </ul>
       </Section>
 
-      <ActionSection>
+      {/* <ActionSection>
         <Icon id="block" className="icon" />
         <ActionText>Block</ActionText>
-      </ActionSection>
+      </ActionSection> */}
       <ActionSection>
         <Icon id="thumbsDown" className="icon" />
-        <ActionText>Report contact</ActionText>
+        <ActionText>Load all chats</ActionText>
       </ActionSection>
-      <ActionSection>
+      {/* <ActionSection>
         <Icon id="delete" className="icon" />
         <ActionText>Delete chat</ActionText>
-      </ActionSection>
+      </ActionSection> */}
     </Wrapper>
   );
 }
