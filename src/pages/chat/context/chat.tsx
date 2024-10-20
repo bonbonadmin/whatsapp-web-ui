@@ -92,10 +92,21 @@ export default function ChatProvider(props: { children: any }) {
             const newMessages: Message[] = [];
             if (response.data.data.length) {
               response.data.data.forEach((value: MessageResponse) => {
+                // const timeStamp =
+                //   new Date(value.created_at).getHours() +
+                //   ":" +
+                //   new Date(value.created_at).getMinutes();
                 const timeStamp =
-                  new Date(value.created_at).getHours() +
-                  ":" +
-                  new Date(value.created_at).getMinutes();
+                  new Date().toDateString() === new Date(value.created_at).toDateString()
+                    ? new Date(value.created_at).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false,
+                    })
+                    : new Date(value.created_at).toLocaleDateString('en-GB', {
+                      day: '2-digit',
+                      month: '2-digit',
+                    });
                 const data: Message = {
                   id: value.id,
                   body: value.message_text,
