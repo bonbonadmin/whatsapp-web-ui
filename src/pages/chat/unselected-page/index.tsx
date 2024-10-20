@@ -23,13 +23,13 @@ export default function UnSelectedChatPage() {
           Use WhatsApp on up to 4 linked devices and 1 phone at the same time.
         </Text>
         <Text>
-          <span>Built by</span>{" "}
-          <Link target="_blank" href="https://github.com/jazimabbas">
+          <span>Built by Jazim Abbas & Bonbon</span>{" "}
+          {/* <Link target="_blank" href="https://github.com/jazimabbas">
             Jazim Abbas
           </Link>
           <IconWrapper>
             <Icon id="heart" />
-          </IconWrapper>
+          </IconWrapper> */}
         </Text>
       </Container>
     </ChatLayout>
