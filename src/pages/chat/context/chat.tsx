@@ -55,6 +55,7 @@ export default function ChatProvider(props: { children: any }) {
   const [activeChat, setActiveChat] = useState<Inbox>();
   const [participantMessages, setMessages] = useState<Message[]>(initialValue.participantMessages);
   const [firstOpenChat, setFirstOpenChat] = useState(false);
+  const baseURL = process.env.REACT_APP_API_URL;
 
   const handleChangeChat = (chat: Inbox) => {
     setActiveChat(chat);
@@ -75,7 +76,7 @@ export default function ChatProvider(props: { children: any }) {
         filePath: msg.filePath ?? null,
       };
 
-      await axios.post("https://wa-svc.bonbon.co.id/message/send", payload);
+      await axios.post(`${baseURL}/message/send`, payload);
       fetchMessages(msg.to);
     } catch (error) {
       console.error("Error fetching messages list:", error);
@@ -86,7 +87,7 @@ export default function ChatProvider(props: { children: any }) {
     () => async (id: any) => {
       try {
         axios
-          .get("https://wa-svc.bonbon.co.id/message-inbox/" + id)
+        .get(`${baseURL}/message-inbox/` + id)
           .then((response) => {
             const newMessages: Message[] = [];
             if (response.data.data.length) {
@@ -121,7 +122,7 @@ export default function ChatProvider(props: { children: any }) {
   useEffect(() => {
     const intervalId = setInterval(() => {
       axios
-        .get("https://wa-svc.bonbon.co.id/message-inbox")
+        .get(`${baseURL}/message-inbox`)
         .then((response) => {
           const newInbox: Inbox[] = [];
           response.data.data.forEach((value: InboxResponse) => {
@@ -146,6 +147,7 @@ export default function ChatProvider(props: { children: any }) {
               messageStatus: value.message_status === 1 ? "READ" : "DELIVERED",
               notificationsCount: value.unread_msg,
             };
+            //console.log("message status: ", value.message_status);
             newInbox.push(data);
             if (data.participantId === activeChat?.participantId && value.message_status === 0) {
               fetchMessages(data.participantId);
@@ -170,13 +172,9 @@ export default function ChatProvider(props: { children: any }) {
         "Content-Type": "multipart/form-data",
       };
 
-      const uploadMedia = await axios.post(
-        "https://wa-svc.bonbon.co.id/message/uploadMedia",
-        formData,
-        {
-          headers,
-        }
-      );
+      const uploadMedia = await axios.post(`${baseURL}/message/uploadMedia`, formData, {
+        headers,
+      });
       console.log(uploadMedia);
 
       const payload = {
@@ -188,7 +186,7 @@ export default function ChatProvider(props: { children: any }) {
       };
       console.log(payload);
 
-      await axios.post("https://wa-svc.bonbon.co.id/message/send", payload);
+      await axios.post(`${baseURL}/message/send`, payload);
       fetchMessages(activeChat?.participantId);
     } catch (error) {
       console.error("Error upload image", error);
