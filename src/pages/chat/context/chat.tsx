@@ -55,7 +55,7 @@ export default function ChatProvider(props: { children: any }) {
   const [activeChat, setActiveChat] = useState<Inbox>();
   const [participantMessages, setMessages] = useState<Message[]>(initialValue.participantMessages);
   const [firstOpenChat, setFirstOpenChat] = useState(false);
-  const baseURL = process.env.REACT_APP_API_URL;
+  const baseURL = 'http://localhost:3000';
 
   const handleChangeChat = (chat: Inbox) => {
     setActiveChat(chat);
