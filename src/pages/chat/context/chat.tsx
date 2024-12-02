@@ -130,48 +130,78 @@ export default function ChatProvider(props: { children: any }) {
     []
   );
 
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      axios
-        .get(`${baseURL}/message-inbox`)
-        .then((response) => {
-          const newInbox: Inbox[] = [];
-          response.data.data.forEach((value: InboxResponse) => {
-            const timeStamp =
-              new Date().toDateString() === new Date(value.created_at).toDateString()
-                ? new Date(value.created_at).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: false,
-                  })
-                : new Date(value.created_at).toLocaleDateString('en-GB');
-            const data: Inbox = {
-              id: value.id,
-              participantId: value.participant_id,
-              name: value.participant_name ?? value.participant_id,
-              image: "/assets/images/boy4.jpeg",
-              lastMessage:
-                value.message_text.length > 50
-                  ? value.message_text.slice(0, 50 - 1) + "...."
-                  : value.message_text,
-              timestamp: timeStamp,
-              messageStatus: value.message_status === 1 ? "READ" : "DELIVERED",
-              notificationsCount: value.unread_msg,
-            };
-            //console.log("message status: ", value.message_status);
-            newInbox.push(data);
-            if (data.participantId === activeChat?.participantId && value.message_status === 0) {
-              fetchMessages(data.participantId);
-            }
-          });
-          setInbox(newInbox);
-        })
-        .catch((err) => {
-          console.log(err.message);
-        });
-    }, 5000);
+   // Function to fetch inbox data
+   const fetchInbox = () => {
+    axios
+      .get(`${baseURL}/message-inbox`)
+      .then((response) => {
+        const newInbox: Inbox[] = [];
+        response.data.data.forEach((value: InboxResponse) => {
+          const timeStamp =
+            new Date().toDateString() === new Date(value.created_at).toDateString()
+              ? new Date(value.created_at).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                })
+              : new Date(value.created_at).toLocaleDateString("en-GB");
+          const data: Inbox = {
+            id: value.id,
+            participantId: value.participant_id,
+            name: value.participant_name ?? value.participant_id,
+            image: "/assets/images/boy4.jpeg",
+            lastMessage:
+              value.message_text.length > 50
+                ? value.message_text.slice(0, 50 - 1) + "...."
+                : value.message_text,
+            timestamp: timeStamp,
+            messageStatus: value.message_status === 1 ? "READ" : "DELIVERED",
+            notificationsCount: value.unread_msg,
+          };
+          newInbox.push(data);
 
-    return () => clearInterval(intervalId);
+          // Fetch messages for active chat if conditions are met
+          if (data.participantId === activeChat?.participantId && value.message_status === 0) {
+            fetchMessages(data.participantId);
+          }
+        });
+        setInbox(newInbox);
+      })
+      .catch((err) => {
+        console.log(err.message);
+      });
+  };
+
+  // Function to initialize EventSource and handle events
+  const initializeEventSource = () => {
+    const eventSource = new EventSource(`${baseURL}/event-check-inbox`);
+
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log("EventSource Data:", data);
+
+      // Trigger fetchInbox when the result is true (lastId changed)
+      if (data.changed) {
+        console.log("Change detected. Fetching inbox...");
+        fetchInbox();
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error("EventSource error:", error);
+      eventSource.close(); // Close connection on error
+    };
+
+    return () => {
+      eventSource.close(); // Cleanup when the component unmounts
+    };
+  };
+
+  // UseEffect to handle EventSource
+  useEffect(() => {
+    const cleanupEventSource = initializeEventSource();
+
+    return cleanupEventSource; // Cleanup function
   }, []);
 
   const handleFileUpload = async (file: File, msg: string, type: string) => {
@@ -186,7 +216,6 @@ export default function ChatProvider(props: { children: any }) {
       const uploadMedia = await axios.post(`${baseURL}/message/uploadMedia`, formData, {
         headers,
       });
-      console.log(uploadMedia);
 
       const payload = {
         to: activeChat?.participantId,
