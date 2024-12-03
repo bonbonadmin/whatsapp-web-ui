@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { inbox } from "../data/inbox";
 import { Inbox, InboxResponse } from "common/types/common.type";
 import {
@@ -51,11 +51,18 @@ export default function ChatProvider(props: { children: any }) {
   const { children } = props;
 
   const [user] = useState<User>(initialValue.user);
-  const [inbox, setInbox] = useState<Inbox[]>(initialValue.inbox);
+  const [inbox, setInbox] = useState<Inbox[]>([]);
   const [activeChat, setActiveChat] = useState<Inbox>();
   const [participantMessages, setMessages] = useState<Message[]>(initialValue.participantMessages);
   const [firstOpenChat, setFirstOpenChat] = useState(false);
-  const baseURL = 'http://localhost:3000';
+  const baseURL = "https://wa-svc.bonbon.co.id";
+
+  const activeChatRef = useRef(activeChat);
+
+  // Update the ref whenever activeChat changes
+  useEffect(() => {
+    activeChatRef.current = activeChat;
+  }, [activeChat]);
 
   const handleChangeChat = (chat: Inbox) => {
     setActiveChat(chat);
@@ -87,7 +94,7 @@ export default function ChatProvider(props: { children: any }) {
     () => async (id: any) => {
       try {
         axios
-        .get(`${baseURL}/message-inbox/` + id)
+          .get(`${baseURL}/message-inbox/` + id)
           .then((response) => {
             const newMessages: Message[] = [];
             if (response.data.data.length) {
@@ -99,14 +106,14 @@ export default function ChatProvider(props: { children: any }) {
                 const timeStamp =
                   new Date().toDateString() === new Date(value.created_at).toDateString()
                     ? new Date(value.created_at).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: false,
-                    })
-                    : new Date(value.created_at).toLocaleDateString('en-GB', {
-                      day: '2-digit',
-                      month: '2-digit',
-                    });
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })
+                    : new Date(value.created_at).toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "2-digit",
+                      });
                 const data: Message = {
                   id: value.id,
                   body: value.message_text,
@@ -119,6 +126,7 @@ export default function ChatProvider(props: { children: any }) {
               });
             }
             setMessages(newMessages);
+            fetchInbox()
           })
           .catch((err) => {
             console.log(err.message);
@@ -130,8 +138,8 @@ export default function ChatProvider(props: { children: any }) {
     []
   );
 
-   // Function to fetch inbox data
-   const fetchInbox = () => {
+  // Function to fetch inbox data
+  const fetchInbox = () => {
     axios
       .get(`${baseURL}/message-inbox`)
       .then((response) => {
@@ -161,7 +169,10 @@ export default function ChatProvider(props: { children: any }) {
           newInbox.push(data);
 
           // Fetch messages for active chat if conditions are met
-          if (data.participantId === activeChat?.participantId && value.message_status === 0) {
+          if (
+            data.participantId === activeChatRef.current?.participantId &&
+            value.message_status === 0
+          ) {
             fetchMessages(data.participantId);
           }
         });
@@ -203,6 +214,13 @@ export default function ChatProvider(props: { children: any }) {
 
     return cleanupEventSource; // Cleanup function
   }, []);
+
+  useEffect(() => {
+    if (inbox.length === 0) {
+      fetchInbox();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inbox]);
 
   const handleFileUpload = async (file: File, msg: string, type: string) => {
     try {
