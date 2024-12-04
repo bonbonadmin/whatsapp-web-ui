@@ -55,7 +55,7 @@ export default function ChatProvider(props: { children: any }) {
   const [activeChat, setActiveChat] = useState<Inbox>();
   const [participantMessages, setMessages] = useState<Message[]>(initialValue.participantMessages);
   const [firstOpenChat, setFirstOpenChat] = useState(false);
-  const baseURL = "https://wa-svc.bonbon.co.id";
+  const baseURL = process.env.REACT_APP_API_URL;
 
   const activeChatRef = useRef(activeChat);
 
