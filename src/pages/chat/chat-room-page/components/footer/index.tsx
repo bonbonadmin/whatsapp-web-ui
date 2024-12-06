@@ -7,6 +7,7 @@ import {
   IconsWrapper,
   Input,
   SendMessageButton,
+  TextArea,
   Wrapper,
 } from "./styles";
 import { useChatContext } from "pages/chat/context/chat";
@@ -92,17 +93,21 @@ export default function Footer() {
   };
 
   const handleKeyDown = (event: any) => {
-    if (event.key === "Enter") {
-      // if (open && fileUpload) {
-      //   chatCtx.onUploadFile(fileUpload, messageValue);
-      //   setMessageValue("");
-      //   setFileUpload(undefined);
-      //   setOpen(false);
-      // } else {
-      //   submitMessage();
-      // }
-      submitMessage();
+    if (event.keyCode === 13 && !event.shiftKey) {
+      submitMessage(); //Submit your form here
+      return false;
     }
+    // if (event.key === "Enter") {
+    //   // if (open && fileUpload) {
+    //   //   chatCtx.onUploadFile(fileUpload, messageValue);
+    //   //   setMessageValue("");
+    //   //   setFileUpload(undefined);
+    //   //   setOpen(false);
+    //   // } else {
+    //   //   submitMessage();
+    //   // }
+    //   submitMessage();
+    // }
   };
 
   const handleOpen = () => setOpen(true);
@@ -150,14 +155,13 @@ export default function Footer() {
           />
         </ButtonsContainer>
       </IconsWrapper>
-      <Input
-        type="text"
+      <TextArea
         value={messageValue}
         name="message"
         onChange={(e) => setMessageValue(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Type a message here .."
-        style={{fontSize: '0.90rem'}}
+        style={{ fontSize: "0.90rem" }}
       />
       <SendMessageButton onClick={submitMessage}>
         <Icon id="send" className="icon" />
