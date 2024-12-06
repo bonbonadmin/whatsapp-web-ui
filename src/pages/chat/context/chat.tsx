@@ -126,7 +126,7 @@ export default function ChatProvider(props: { children: any }) {
               });
             }
             setMessages(newMessages);
-            fetchInbox()
+            fetchInbox();
           })
           .catch((err) => {
             console.log(err.message);
@@ -183,36 +183,27 @@ export default function ChatProvider(props: { children: any }) {
       });
   };
 
-  // Function to initialize EventSource and handle events
-  const initializeEventSource = () => {
-    const eventSource = new EventSource(`${baseURL}/event-check-inbox`);
-
-    eventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      console.log("EventSource Data:", data);
-
-      // Trigger fetchInbox when the result is true (lastId changed)
-      if (data.changed) {
-        console.log("Change detected. Fetching inbox...");
-        fetchInbox();
+  useEffect(() => {
+    // Define the async function inside useEffect to call the API
+    const fetchData = async () => {
+      try {
+        // API endpoint
+        const response = await axios.get(`${baseURL}/event-check-inbox`);
+        console.log(response.data)
+        if (response.data && response.data.data) {
+          fetchInbox()
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
       }
     };
 
-    eventSource.onerror = (error) => {
-      console.error("EventSource error:", error);
-      eventSource.close(); // Close connection on error
-    };
+    fetchData();
 
-    return () => {
-      eventSource.close(); // Cleanup when the component unmounts
-    };
-  };
+    const intervalId = setInterval(fetchData, 5000);
 
-  // UseEffect to handle EventSource
-  useEffect(() => {
-    const cleanupEventSource = initializeEventSource();
-
-    return cleanupEventSource; // Cleanup function
+    return () => clearInterval(intervalId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
