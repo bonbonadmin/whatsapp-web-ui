@@ -10,6 +10,7 @@ export const inbox: Inbox[] = [
     messageStatus: "SENT",
     timestamp: "08:21",
     isPinned: true,
+    updatedAt: ""
   },
   {
     id: "38v8ury2e80leynh9lp",
@@ -21,6 +22,7 @@ export const inbox: Inbox[] = [
     timestamp: "12:15",
     isPinned: true,
     isOnline: true,
+    updatedAt: ""
   },
   {
     id: "38v8ury2e8hleynhflu",
@@ -30,6 +32,7 @@ export const inbox: Inbox[] = [
     notificationsCount: 0,
     messageStatus: "READ",
     timestamp: "6:47",
+    updatedAt: ""
   },
   {
     id: "38v8ury2e8yleynhli9",
@@ -38,6 +41,7 @@ export const inbox: Inbox[] = [
     lastMessage: "See you tomorrow!",
     messageStatus: "SENT",
     timestamp: "09:35",
+    updatedAt: ""
   },
   {
     id: "38v8ury2e9cleynhqgh",
@@ -46,6 +50,7 @@ export const inbox: Inbox[] = [
     lastMessage: "Thanks for your help!",
     messageStatus: "DELIVERED",
     timestamp: "5:22",
+    updatedAt: ""
   },
   {
     id: "38v8ury2ectleyniehz",
@@ -55,6 +60,7 @@ export const inbox: Inbox[] = [
     messageStatus: "READ",
     timestamp: "4:10",
     isOnline: true,
+    updatedAt: ""
   },
   {
     id: "38v8ury2edbleynin0d",
@@ -63,6 +69,7 @@ export const inbox: Inbox[] = [
     lastMessage: "Let's meet at the park!",
     messageStatus: "SENT",
     timestamp: "13:48",
+    updatedAt: ""
   },
   {
     id: "38v8ury2edsleynisii",
@@ -72,6 +79,7 @@ export const inbox: Inbox[] = [
     messageStatus: "DELIVERED",
     timestamp: "08:56",
     isOnline: true,
+    updatedAt: ""
   },
   {
     id: "38v8ury2ee6leynix43",
@@ -80,5 +88,6 @@ export const inbox: Inbox[] = [
     lastMessage: "Can you send me the file?",
     messageStatus: "READ",
     timestamp: "19:03",
+    updatedAt: ""
   },
 ];

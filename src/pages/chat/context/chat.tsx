@@ -55,14 +55,20 @@ export default function ChatProvider(props: { children: any }) {
   const [activeChat, setActiveChat] = useState<Inbox>();
   const [participantMessages, setMessages] = useState<Message[]>(initialValue.participantMessages);
   const [firstOpenChat, setFirstOpenChat] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState("");
   const baseURL = process.env.REACT_APP_API_URL;
 
   const activeChatRef = useRef(activeChat);
+  const lastUpdateRef = useRef(lastUpdate);
 
   // Update the ref whenever activeChat changes
   useEffect(() => {
     activeChatRef.current = activeChat;
   }, [activeChat]);
+
+  useEffect(() => {
+    lastUpdateRef.current = lastUpdate;
+  }, [lastUpdate]);
 
   const handleChangeChat = (chat: Inbox) => {
     setActiveChat(chat);
@@ -126,7 +132,6 @@ export default function ChatProvider(props: { children: any }) {
               });
             }
             setMessages(newMessages);
-            fetchInbox();
           })
           .catch((err) => {
             console.log(err.message);
@@ -165,6 +170,7 @@ export default function ChatProvider(props: { children: any }) {
             timestamp: timeStamp,
             messageStatus: value.message_status === 1 ? "READ" : "DELIVERED",
             notificationsCount: value.unread_msg,
+            updatedAt: value.updated_at,
           };
           newInbox.push(data);
 
@@ -176,6 +182,12 @@ export default function ChatProvider(props: { children: any }) {
             fetchMessages(data.participantId);
           }
         });
+        if (newInbox && newInbox.length > 0) {
+          const sortUpdatedAt = [...newInbox].sort(
+            (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          )[0];
+          setLastUpdate(sortUpdatedAt.updatedAt);
+        }
         setInbox(newInbox);
       })
       .catch((err) => {
@@ -188,10 +200,15 @@ export default function ChatProvider(props: { children: any }) {
     const fetchData = async () => {
       try {
         // API endpoint
-        const response = await axios.get(`${baseURL}/event-check-inbox`);
-        console.log(response.data)
-        if (response.data && response.data.data) {
-          fetchInbox()
+        if (lastUpdateRef.current && lastUpdateRef.current !== "") {
+          const payload = {
+            clientLastUpdate: lastUpdateRef.current,
+          };
+          const response = await axios.post(`${baseURL}/event-check-inbox`, payload);
+          console.log(response.data);
+          if (response.data && response.data.data) {
+            fetchInbox()
+          }
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -203,7 +220,7 @@ export default function ChatProvider(props: { children: any }) {
     const intervalId = setInterval(fetchData, 5000);
 
     return () => clearInterval(intervalId);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
