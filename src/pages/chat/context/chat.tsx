@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { inbox } from "../data/inbox";
 import { Inbox, InboxResponse } from "common/types/common.type";
 import {
@@ -14,16 +14,21 @@ type User = {
   image: string;
 };
 
+type SearchResult = Inbox | Message;  // Adjust based on your API response
+
 type ChatContextProp = {
   user: User;
   inbox: Inbox[];
   participantMessages: Message[];
   firstOpenChat: boolean;
   activeChat?: Inbox;
+  searchText: string;
+  searchResults: SearchResult[];
   onChangeChat: (chat: Inbox) => void;
   onFirstOpenChat: (condition: boolean) => void;
   onSendMessage: (message: MessagePayload) => void;
   onUploadFile: (file: File, msg: string, type: string) => void;
+  onSearch: (query: string) => void;
 };
 
 const initialValue: ChatContextProp = {
@@ -31,6 +36,8 @@ const initialValue: ChatContextProp = {
   inbox,
   participantMessages: getMessages(),
   firstOpenChat: false,
+  searchText: "",
+  searchResults: [],
   onChangeChat() {
     throw new Error();
   },
@@ -41,6 +48,9 @@ const initialValue: ChatContextProp = {
     throw new Error();
   },
   onFirstOpenChat() {
+    throw new Error();
+  },
+  onSearch() {
     throw new Error();
   },
 };
@@ -56,6 +66,8 @@ export default function ChatProvider(props: { children: any }) {
   const [participantMessages, setMessages] = useState<Message[]>(initialValue.participantMessages);
   const [firstOpenChat, setFirstOpenChat] = useState(false);
   const [lastUpdate, setLastUpdate] = useState("");
+  const [searchText, setSearchText] = useState<string>("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const baseURL = process.env.REACT_APP_API_URL;
 
   const activeChatRef = useRef(activeChat);
@@ -142,12 +154,13 @@ export default function ChatProvider(props: { children: any }) {
     },
     []
   );
-
   // Function to fetch inbox data
-  const fetchInbox = () => {
-    axios
-      .get(`${baseURL}/message-inbox`)
-      .then((response) => {
+  const fetchInbox = useMemo(
+    () => async (query?: string) => {
+      try {
+        const params = query ? { searchTerm: query } : {};
+        const response = await axios.get(`${baseURL}/message-inbox`, { params });
+  
         const newInbox: Inbox[] = [];
         response.data.data.forEach((value: InboxResponse) => {
           const timeStamp =
@@ -158,6 +171,7 @@ export default function ChatProvider(props: { children: any }) {
                   hour12: false,
                 })
               : new Date(value.created_at).toLocaleDateString("en-GB");
+  
           const data: Inbox = {
             id: value.id,
             participantId: value.participant_id,
@@ -165,7 +179,7 @@ export default function ChatProvider(props: { children: any }) {
             image: "/assets/images/boy4.jpeg",
             lastMessage:
               value.message_text.length > 50
-                ? value.message_text.slice(0, 50 - 1) + "...."
+                ? value.message_text.slice(0, 49) + "...."
                 : value.message_text,
             timestamp: timeStamp,
             messageStatus: value.message_status === 1 ? "READ" : "DELIVERED",
@@ -173,7 +187,7 @@ export default function ChatProvider(props: { children: any }) {
             updatedAt: value.updated_at,
           };
           newInbox.push(data);
-
+  
           // Fetch messages for active chat if conditions are met
           if (
             data.participantId === activeChatRef.current?.participantId &&
@@ -182,22 +196,54 @@ export default function ChatProvider(props: { children: any }) {
             fetchMessages(data.participantId);
           }
         });
-        if (newInbox && newInbox.length > 0) {
-          const sortUpdatedAt = [...newInbox].sort(
-            (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-          )[0];
-          setLastUpdate(sortUpdatedAt.updatedAt);
+        
+        const timeInfo = response.data.timeInfo;
+        if (timeInfo) {
+          setLastUpdate(timeInfo.updated_at);
+        } else {
+          setLastUpdate('');
         }
+        // if (newInbox && newInbox.length > 0) {
+        //   const sortUpdatedAt = [...newInbox].sort(
+        //     (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        //   )[0];
+        //   setLastUpdate(sortUpdatedAt.updatedAt);
+        // }
+  
         setInbox(newInbox);
-      })
-      .catch((err) => {
-        console.log(err.message);
-      });
-  };
+      } catch (error) {
+        console.error("Error fetching inbox:", error);
+      }
+    },
+    [baseURL, fetchMessages]
+  );
+
+  const handleSearch = useMemo(
+    () => async (query: string) => {
+      console.log("handling search: ", query);
+      setSearchText(query);
+      // console.log("searchText1:", searchText);
+
+      if (query.trim() === "") {
+        // If the search query is empty, fetch the standard inbox
+        fetchInbox();
+        return;
+      }
+      //setIsSearching(true);
+      try {
+        // Fetch inbox with the search term
+        await fetchInbox(query);
+      } catch (error) {
+        console.error("Error performing search:", error);
+      }
+    },
+    [fetchInbox, inbox]
+  );
 
   useEffect(() => {
     // Define the async function inside useEffect to call the API
     const fetchData = async () => {
+      // console.log("Searchtext: ", searchText);
       try {
         // API endpoint
         if (lastUpdateRef.current && lastUpdateRef.current !== "") {
@@ -207,7 +253,7 @@ export default function ChatProvider(props: { children: any }) {
           const response = await axios.post(`${baseURL}/event-check-inbox`, payload);
           console.log(response.data);
           if (response.data && response.data.data) {
-            fetchInbox()
+            fetchInbox(searchText.trim() !== "" ? searchText : undefined);
           }
         }
       } catch (error) {
@@ -221,7 +267,7 @@ export default function ChatProvider(props: { children: any }) {
 
     return () => clearInterval(intervalId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchText]);
 
   useEffect(() => {
     if (inbox.length === 0) {
@@ -267,10 +313,13 @@ export default function ChatProvider(props: { children: any }) {
         activeChat,
         participantMessages,
         firstOpenChat,
+        searchText,
+        searchResults,
         onChangeChat: handleChangeChat,
         onSendMessage: handleSendMessage,
         onUploadFile: handleFileUpload,
         onFirstOpenChat: handleFirstOpenChat,
+        onSearch: handleSearch,
       }}
     >
       {children}
