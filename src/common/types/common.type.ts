@@ -4,6 +4,7 @@ export type Inbox = {
   id: string;
   name: string;
   image: string;
+  updatedAt: string;
   participantId?: string;
   lastMessage?: string;
   timestamp?: string;
@@ -23,5 +24,6 @@ export type InboxResponse = {
   message_status: number;
   display_phone_number: string;
   created_at: Date;
+  updated_at: string;
   unread_msg: number;
 }

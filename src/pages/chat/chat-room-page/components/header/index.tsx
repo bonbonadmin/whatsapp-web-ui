@@ -36,7 +36,7 @@ export default function Header(props: HeaderProps) {
         <Action onClick={onSearchClick}>
           <Icon id="search" className="icon search-icon" />
         </Action>
-        <OptionsMenu
+        {/* <OptionsMenu
           styles={actionStyles}
           ariaLabel="Menu"
           iconId="menu"
@@ -48,7 +48,7 @@ export default function Header(props: HeaderProps) {
             "Clear messages",
             "Delete chat",
           ]}
-        />
+        /> */}
       </Actions>
     </Container>
   );

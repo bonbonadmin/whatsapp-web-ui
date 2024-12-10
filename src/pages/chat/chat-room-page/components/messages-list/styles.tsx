@@ -3,14 +3,13 @@ import styled, { css } from "styled-components";
 export const Container = styled.div`
   flex: 1;
   position: relative;
-  /* background: #e4dcd4; */
-  overflow-y: scroll;
+  overflow-y: auto;
   overflow-x: hidden;
-  padding: 20px 5% 2pc;
+  padding: 1rem 5% 2rem;
 
   .icon {
     color: ${(props) => props.theme.common.subHeadingColor};
-    margin-right: 5px;
+    margin-right: 0.3rem;
     margin-bottom: -1px;
   }
 `;
@@ -118,6 +117,7 @@ export const ChatMessage = styled.div`
   position: relative;
   white-space: pre-line;
   display: flex;
+  word-break: break-word;
 
   @media screen and (min-width: 1301px) {
     max-width: 65%;
@@ -127,8 +127,12 @@ export const ChatMessage = styled.div`
     max-width: 75%;
   }
 
-  @media screen and (min-width: 900px) and (max-width: 1000px) {
+  @media screen and (min-width: 768px) and (max-width: 999px) {
     max-width: 85%;
+  }
+
+  @media screen and (max-width: 767px) {
+    max-width: 95%;
   }
 `;
 

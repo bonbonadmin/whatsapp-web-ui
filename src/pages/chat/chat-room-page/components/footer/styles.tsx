@@ -87,6 +87,35 @@ export const Input = styled.input`
   }
 `;
 
+export const TextArea = styled.textarea`
+  /* background: white; */
+  /* color: rgb(74, 74, 74); */
+  background: ${(props) => props.theme.common.secondaryColor};
+  color: ${(props) => props.theme.common.subHeadingColor};
+
+  padding: 10px;
+  border-radius: 10px;
+  flex: 1;
+  height: 100%;
+  margin-left: 7px;
+
+  resize: none; /* Disable the resize handle */
+
+  /* &::placeholder {
+  color: rgb(153, 153, 153);
+} */
+
+  &::placeholder {
+    /* color: rgb(74, 74, 74); */
+    color: ${(props) => props.theme.common.subHeadingColor};
+    font-size: 0.9rem;
+  }
+
+  &:focus {
+    outline: none;
+  }
+`;
+
 export const SendMessageButton = styled.button`
   .icon {
     margin-left: 8px;

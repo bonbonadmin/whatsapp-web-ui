@@ -32,7 +32,9 @@ export default function ChatRoomPage() {
   const scrollButton = React.useRef<HTMLButtonElement>(null);
 
   const chatCtx = useChatContext();
-
+  useEffect(() => {
+    setShouldScrollToBottom(true);
+  }, []);
   // useEffect(() => {
   //   if (chatCtx.firstOpenChat) {
   //     scrollButton.current?.click();
@@ -77,7 +79,7 @@ export default function ChatRoomPage() {
           isOpen={isProfileOpen}
           onClose={() => setIsProfileOpen(false)}
         >
-          <ProfileSection name={activeInbox?.name ?? ""} image={activeInbox?.image ?? ""} />
+          <ProfileSection name={activeInbox?.name ?? ""} image={activeInbox?.image ?? ""} phoneNumber={activeInbox?.participantId ?? ""} />
         </Sidebar>
       </Container>
     </ChatLayout>
