@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { BsFillMoonFill, BsMoon } from "react-icons/bs";
+import InfiniteScroll from "react-infinite-scroll-component";
 
 import SidebarAlert from "./alert";
 import InboxContact from "./contacts";
@@ -69,15 +70,24 @@ export default function Sidebar() {
       </Header>
       {/* <SidebarAlert /> */}
       <SearchField />
-      <ContactContainer>
-        {chatCtx.inbox.map((inbox) => (
-          <InboxContact
-            key={inbox.id}
-            inbox={inbox}
-            isActive={inbox.id === chatCtx.activeChat?.id}
-            onChangeChat={handleChangeChat}
-          />
-        ))}
+      <ContactContainer id="scrollableDiv" style={{ overflow: "auto", height: "80vh" }}>
+        <InfiniteScroll
+          dataLength={chatCtx.inbox.length}
+          next={chatCtx.loadMore}
+          hasMore={chatCtx.hasMore}
+          loader={<h4>Loading...</h4>}
+          endMessage={<p style={{ textAlign: "center" }}>No more chats</p>}
+          scrollableTarget="scrollableDiv"
+        >
+          {chatCtx.inbox.map((inbox) => (
+            <InboxContact
+              key={inbox.id}
+              inbox={inbox}
+              isActive={inbox.id === chatCtx.activeChat?.id}
+              onChangeChat={handleChangeChat}
+            />
+          ))}
+        </InfiniteScroll>
       </ContactContainer>
     </SidebarContainer>
   );

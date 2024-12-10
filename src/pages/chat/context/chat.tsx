@@ -24,11 +24,13 @@ type ChatContextProp = {
   activeChat?: Inbox;
   searchText: string;
   searchResults: SearchResult[];
+  hasMore: boolean;
   onChangeChat: (chat: Inbox) => void;
   onFirstOpenChat: (condition: boolean) => void;
   onSendMessage: (message: MessagePayload) => void;
   onUploadFile: (file: File, msg: string, type: string) => void;
   onSearch: (query: string) => void;
+  loadMore: () => void;
 };
 
 const initialValue: ChatContextProp = {
@@ -38,6 +40,7 @@ const initialValue: ChatContextProp = {
   firstOpenChat: false,
   searchText: "",
   searchResults: [],
+  hasMore: true,
   onChangeChat() {
     throw new Error();
   },
@@ -53,6 +56,9 @@ const initialValue: ChatContextProp = {
   onSearch() {
     throw new Error();
   },
+  loadMore() {
+    throw new Error("loadMore function must be overridden");
+  },
 };
 
 export const ChatContext = React.createContext<ChatContextProp>(initialValue);
@@ -67,6 +73,7 @@ export default function ChatProvider(props: { children: any }) {
   const [firstOpenChat, setFirstOpenChat] = useState(false);
   const [lastUpdate, setLastUpdate] = useState("");
   const [searchText, setSearchText] = useState<string>("");
+  const [hasMore, setHasMore] = useState<boolean>(true);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const baseURL = process.env.REACT_APP_API_URL;
 
@@ -269,6 +276,10 @@ export default function ChatProvider(props: { children: any }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchText]);
 
+  const loadMore = useCallback(() => {
+    console.log("Loading more: ",hasMore)
+  }, [hasMore]);
+
   useEffect(() => {
     if (inbox.length === 0) {
       fetchInbox();
@@ -315,11 +326,13 @@ export default function ChatProvider(props: { children: any }) {
         firstOpenChat,
         searchText,
         searchResults,
+        hasMore,
         onChangeChat: handleChangeChat,
         onSendMessage: handleSendMessage,
         onUploadFile: handleFileUpload,
         onFirstOpenChat: handleFirstOpenChat,
         onSearch: handleSearch,
+        loadMore,
       }}
     >
       {children}
