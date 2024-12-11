@@ -74,6 +74,7 @@ export default function ChatProvider(props: { children: any }) {
   const [lastUpdate, setLastUpdate] = useState("");
   const [searchText, setSearchText] = useState<string>("");
   const [hasMore, setHasMore] = useState<boolean>(true);
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const baseURL = process.env.REACT_APP_API_URL;
 
@@ -163,9 +164,11 @@ export default function ChatProvider(props: { children: any }) {
   );
   // Function to fetch inbox data
   const fetchInbox = useMemo(
-    () => async (query?: string) => {
+    () => async (query?: string, page: number = 1, perPage: number = 100) => {
       try {
-        const params = query ? { searchTerm: query } : {};
+        const params: any = { page, perPage };
+        if (query) params.searchTerm = query;
+        console.log("params: ", params);
         const response = await axios.get(`${baseURL}/message-inbox`, { params });
   
         const newInbox: Inbox[] = [];
@@ -217,7 +220,13 @@ export default function ChatProvider(props: { children: any }) {
         //   setLastUpdate(sortUpdatedAt.updatedAt);
         // }
   
-        setInbox(newInbox);
+        //setInbox(newInbox);
+        setInbox((prevInbox) => [...prevInbox, ...newInbox]);
+        if (newInbox.length < perPage) {
+          setHasMore(false); // No more data to fetch
+        } else {
+          setHasMore(true);
+        }
       } catch (error) {
         console.error("Error fetching inbox:", error);
       }
@@ -228,24 +237,36 @@ export default function ChatProvider(props: { children: any }) {
   const handleSearch = useMemo(
     () => async (query: string) => {
       console.log("handling search: ", query);
+      setInbox([]);
       setSearchText(query);
+      setCurrentPage(1); // Reset to first page
+      setHasMore(true); // Reset hasMore
       // console.log("searchText1:", searchText);
 
       if (query.trim() === "") {
         // If the search query is empty, fetch the standard inbox
-        fetchInbox();
+        console.log("one");
+        await fetchInbox(undefined, 1);
         return;
       }
       //setIsSearching(true);
       try {
         // Fetch inbox with the search term
-        await fetchInbox(query);
+        console.log("two");
+        await fetchInbox(query, 1);
       } catch (error) {
         console.error("Error performing search:", error);
       }
     },
     [fetchInbox, inbox]
   );
+
+  const loadMore = useCallback(() => {
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    console.log("Loading more: ",nextPage)
+    fetchInbox(searchText.trim() !== "" ? searchText : undefined, nextPage);
+  }, [hasMore, currentPage, fetchInbox,searchText]);
 
   useEffect(() => {
     // Define the async function inside useEffect to call the API
@@ -260,6 +281,7 @@ export default function ChatProvider(props: { children: any }) {
           const response = await axios.post(`${baseURL}/event-check-inbox`, payload);
           console.log(response.data);
           if (response.data && response.data.data) {
+            setInbox([]);
             fetchInbox(searchText.trim() !== "" ? searchText : undefined);
           }
         }
@@ -270,23 +292,25 @@ export default function ChatProvider(props: { children: any }) {
 
     fetchData();
 
-    const intervalId = setInterval(fetchData, 5000);
+    const intervalId = setInterval(fetchData, 10000);
 
     return () => clearInterval(intervalId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchText]);
 
-  const loadMore = useCallback(() => {
-    console.log("Loading more: ",hasMore)
-  }, [hasMore]);
-
+  // useEffect(() => {
+  //   if (inbox.length === 0) {
+  //     console.log("Empty Inbox");
+  //     fetchInbox();
+  //   }
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [inbox]);
+  
   useEffect(() => {
-    if (inbox.length === 0) {
-      fetchInbox();
-    }
+    fetchInbox();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inbox]);
-
+  }, []);
+  
   const handleFileUpload = async (file: File, msg: string, type: string) => {
     try {
       const formData = new FormData();

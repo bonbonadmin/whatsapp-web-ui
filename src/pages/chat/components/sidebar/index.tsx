@@ -14,8 +14,10 @@ import {
   Actions,
   Avatar,
   ContactContainer,
+  EndMessage,
   Header,
   ImageWrapper,
+  Loader,
   SidebarContainer,
   ThemeIconContainer,
 } from "./styles";
@@ -75,8 +77,8 @@ export default function Sidebar() {
           dataLength={chatCtx.inbox.length}
           next={chatCtx.loadMore}
           hasMore={chatCtx.hasMore}
-          loader={<h4>Loading...</h4>}
-          endMessage={<p style={{ textAlign: "center" }}>No more chats</p>}
+          loader={<Loader>Loading..</Loader>}
+          endMessage={<EndMessage>No more chats</EndMessage>}
           scrollableTarget="scrollableDiv"
         >
           {chatCtx.inbox.map((inbox) => (
