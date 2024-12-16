@@ -1,4 +1,4 @@
-import React, { CSSProperties, useState } from "react";
+import React, { CSSProperties, useEffect, useState } from "react";
 import { useChatContext } from "../../context/chat"; // Adjust the import path
 import Icon from "common/components/icons";
 
@@ -43,8 +43,9 @@ const localStyles: Record<string, React.CSSProperties> = {
 
 export default function SearchField(props: SearchFieldProps) {
   const { placeholder, ...rest } = props;
-  const { onSearch, searchText } = useChatContext();
+  const { onSearch, searchText, isFetchInbox } = useChatContext();
   const [inputValue, setInputValue] = useState(searchText);
+  const [isDisabled, setIsDisabled] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -56,6 +57,10 @@ export default function SearchField(props: SearchFieldProps) {
     onSearch(inputValue);
   };
 
+  useEffect(() => {
+    setIsDisabled(isFetchInbox);
+  }, [isFetchInbox]);
+
   return (
     <div style={localStyles.parentContainer}>
       <form onSubmit={handleSubmit} style={localStyles.searchWrapper} {...rest}>
@@ -63,6 +68,7 @@ export default function SearchField(props: SearchFieldProps) {
           <Icon id="search" aria-hidden="true" style={localStyles.searchIcon} />
         </div>
         <input
+          disabled={isDisabled}
           type="text"
           placeholder={placeholder ?? "Search"}
           value={inputValue}

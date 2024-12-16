@@ -89,6 +89,7 @@ export default function ChatProvider(props: { children: any }) {
   const activeChatRef = useRef(activeChat);
   const lastUpdateRef = useRef(lastUpdate);
   const toggleSearchRef = useRef(toggleSearch);
+  const isFetchInboxRef = useRef(isFetchInbox);
 
   // Update the ref whenever activeChat changes
   useEffect(() => {
@@ -102,6 +103,10 @@ export default function ChatProvider(props: { children: any }) {
   useEffect(() => {
     toggleSearchRef.current = toggleSearch;
   }, [toggleSearch]);
+
+  useEffect(() => {
+    isFetchInboxRef.current = isFetchInbox;
+  }, [isFetchInbox]);
 
   const handleChangeChat = (chat: Inbox) => {
     setActiveChat(chat);
@@ -180,7 +185,7 @@ export default function ChatProvider(props: { children: any }) {
     () =>
       async (query?: string, page: number = 1, perPage: number = 100) => {
         try {
-          setIsFetchInbox(true)
+          setIsFetchInbox(true);
           const params: any = { page, perPage };
           if (query) params.searchTerm = query;
           console.log("params: ", params);
@@ -253,9 +258,9 @@ export default function ChatProvider(props: { children: any }) {
           } else {
             setHasMore(true);
           }
-          setIsFetchInbox(false)
+          setIsFetchInbox(false);
         } catch (error) {
-          setIsFetchInbox(false)
+          setIsFetchInbox(false);
           console.error("Error fetching inbox:", error);
         }
       },
@@ -292,7 +297,8 @@ export default function ChatProvider(props: { children: any }) {
   const handleToggleSearch = (toggle: boolean) => {
     setToggleSearch(toggle);
     if (toggle) {
-      const filteredInbox: Inbox[] = inbox.filter((item) => Number(item.notificationsCount) > 0) ?? [];
+      const filteredInbox: Inbox[] =
+        inbox.filter((item) => Number(item.notificationsCount) > 0) ?? [];
       setInbox(filteredInbox);
     } else {
       setInbox([]);
@@ -313,15 +319,17 @@ export default function ChatProvider(props: { children: any }) {
       // console.log("Searchtext: ", searchText);
       try {
         // API endpoint
-        if (lastUpdateRef.current && lastUpdateRef.current !== "") {
-          const payload = {
-            clientLastUpdate: lastUpdateRef.current,
-          };
-          const response = await axios.post(`${baseURL}/event-check-inbox`, payload);
-          console.log(response.data);
-          if (response.data && response.data.data) {
-            setInbox([]);
-            fetchInbox(searchText.trim() !== "" ? searchText : undefined);
+        if (!isFetchInboxRef.current) {
+          if (lastUpdateRef.current && lastUpdateRef.current !== "") {
+            const payload = {
+              clientLastUpdate: lastUpdateRef.current,
+            };
+            const response = await axios.post(`${baseURL}/event-check-inbox`, payload);
+            console.log(response.data);
+            if (response.data && response.data.data) {
+              setInbox([]);
+              fetchInbox(searchText.trim() !== "" ? searchText : undefined);
+            }
           }
         }
       } catch (error) {
