@@ -14,7 +14,7 @@ type User = {
   image: string;
 };
 
-type SearchResult = Inbox | Message;  // Adjust based on your API response
+type SearchResult = Inbox | Message; // Adjust based on your API response
 
 type ChatContextProp = {
   user: User;
@@ -24,11 +24,15 @@ type ChatContextProp = {
   activeChat?: Inbox;
   searchText: string;
   searchResults: SearchResult[];
+  hasMore: boolean;
   onChangeChat: (chat: Inbox) => void;
   onFirstOpenChat: (condition: boolean) => void;
   onSendMessage: (message: MessagePayload) => void;
   onUploadFile: (file: File, msg: string, type: string) => void;
   onSearch: (query: string) => void;
+  onToggleSearch: (toggle: boolean) => void;
+  loadMore: () => void;
+  isFetchInbox: boolean;
 };
 
 const initialValue: ChatContextProp = {
@@ -38,6 +42,8 @@ const initialValue: ChatContextProp = {
   firstOpenChat: false,
   searchText: "",
   searchResults: [],
+  hasMore: true,
+  isFetchInbox: false,
   onChangeChat() {
     throw new Error();
   },
@@ -53,6 +59,12 @@ const initialValue: ChatContextProp = {
   onSearch() {
     throw new Error();
   },
+  onToggleSearch() {
+    throw new Error();
+  },
+  loadMore() {
+    throw new Error("loadMore function must be overridden");
+  },
 };
 
 export const ChatContext = React.createContext<ChatContextProp>(initialValue);
@@ -67,11 +79,17 @@ export default function ChatProvider(props: { children: any }) {
   const [firstOpenChat, setFirstOpenChat] = useState(false);
   const [lastUpdate, setLastUpdate] = useState("");
   const [searchText, setSearchText] = useState<string>("");
+  const [toggleSearch, setToggleSearch] = useState<boolean>(false);
+  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isFetchInbox, setIsFetchInbox] = useState<boolean>(false);
   const baseURL = process.env.REACT_APP_API_URL;
 
   const activeChatRef = useRef(activeChat);
   const lastUpdateRef = useRef(lastUpdate);
+  const toggleSearchRef = useRef(toggleSearch);
+  const isFetchInboxRef = useRef(isFetchInbox);
 
   // Update the ref whenever activeChat changes
   useEffect(() => {
@@ -81,6 +99,14 @@ export default function ChatProvider(props: { children: any }) {
   useEffect(() => {
     lastUpdateRef.current = lastUpdate;
   }, [lastUpdate]);
+
+  useEffect(() => {
+    toggleSearchRef.current = toggleSearch;
+  }, [toggleSearch]);
+
+  useEffect(() => {
+    isFetchInboxRef.current = isFetchInbox;
+  }, [isFetchInbox]);
 
   const handleChangeChat = (chat: Inbox) => {
     setActiveChat(chat);
@@ -156,83 +182,111 @@ export default function ChatProvider(props: { children: any }) {
   );
   // Function to fetch inbox data
   const fetchInbox = useMemo(
-    () => async (query?: string) => {
-      try {
-        const params = query ? { searchTerm: query } : {};
-        const response = await axios.get(`${baseURL}/message-inbox`, { params });
-  
-        const newInbox: Inbox[] = [];
-        response.data.data.forEach((value: InboxResponse) => {
-          const timeStamp =
-            new Date().toDateString() === new Date(value.created_at).toDateString()
-              ? new Date(value.created_at).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: false,
-                })
-              : new Date(value.created_at).toLocaleDateString("en-GB");
-  
-          const data: Inbox = {
-            id: value.id,
-            participantId: value.participant_id,
-            name: value.participant_name ?? value.participant_id,
-            image: "/assets/images/boy4.jpeg",
-            lastMessage:
-              value.message_text.length > 50
-                ? value.message_text.slice(0, 49) + "...."
-                : value.message_text,
-            timestamp: timeStamp,
-            messageStatus: value.message_status === 1 ? "READ" : "DELIVERED",
-            notificationsCount: value.unread_msg,
-            updatedAt: value.updated_at,
-          };
-          newInbox.push(data);
-  
-          // Fetch messages for active chat if conditions are met
-          if (
-            data.participantId === activeChatRef.current?.participantId &&
-            value.message_status === 0
-          ) {
-            fetchMessages(data.participantId);
+    () =>
+      async (query?: string, page: number = 1, perPage: number = 100) => {
+        try {
+          setIsFetchInbox(true);
+          const params: any = { page, perPage };
+          if (query) params.searchTerm = query;
+          console.log("params: ", params);
+          const response = await axios.get(`${baseURL}/message-inbox`, { params });
+
+          const newInbox: Inbox[] = [];
+          response.data.data.forEach((value: InboxResponse) => {
+            const timeStamp =
+              new Date().toDateString() === new Date(value.created_at).toDateString()
+                ? new Date(value.created_at).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false,
+                  })
+                : new Date(value.created_at).toLocaleDateString("en-GB");
+
+            const data: Inbox = {
+              id: value.id,
+              participantId: value.participant_id,
+              name: value.participant_name ?? value.participant_id,
+              image: "/assets/images/boy4.jpeg",
+              lastMessage:
+                value.message_text.length > 50
+                  ? value.message_text.slice(0, 49) + "...."
+                  : value.message_text,
+              timestamp: timeStamp,
+              messageStatus: value.message_status === 1 ? "READ" : "DELIVERED",
+              notificationsCount: value.unread_msg,
+              updatedAt: value.updated_at,
+            };
+            newInbox.push(data);
+
+            // Fetch messages for active chat if conditions are met
+            if (
+              data.participantId === activeChatRef.current?.participantId &&
+              value.message_status === 0
+            ) {
+              fetchMessages(data.participantId);
+            }
+          });
+
+          const timeInfo = response.data.timeInfo;
+          if (timeInfo) {
+            setLastUpdate(timeInfo.updated_at);
+          } else {
+            setLastUpdate("");
           }
-        });
-        
-        const timeInfo = response.data.timeInfo;
-        if (timeInfo) {
-          setLastUpdate(timeInfo.updated_at);
-        } else {
-          setLastUpdate('');
+          // if (newInbox && newInbox.length > 0) {
+          //   const sortUpdatedAt = [...newInbox].sort(
+          //     (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          //   )[0];
+          //   setLastUpdate(sortUpdatedAt.updatedAt);
+          // }
+
+          //setInbox(newInbox);
+          setInbox((prevInbox) => [...prevInbox, ...newInbox]);
+          if (toggleSearchRef.current) {
+            let i = 0;
+            while (i < newInbox.length) {
+              if (Number(newInbox[i].notificationsCount) <= 0) {
+                newInbox.splice(i, 1); // Remove the element at index i
+              } else {
+                i++; // Move to the next index only if no removal happens
+              }
+            }
+            setInbox(newInbox);
+          }
+          if (newInbox.length < perPage) {
+            setHasMore(false); // No more data to fetch
+          } else {
+            setHasMore(true);
+          }
+          setIsFetchInbox(false);
+        } catch (error) {
+          setIsFetchInbox(false);
+          console.error("Error fetching inbox:", error);
         }
-        // if (newInbox && newInbox.length > 0) {
-        //   const sortUpdatedAt = [...newInbox].sort(
-        //     (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-        //   )[0];
-        //   setLastUpdate(sortUpdatedAt.updatedAt);
-        // }
-  
-        setInbox(newInbox);
-      } catch (error) {
-        console.error("Error fetching inbox:", error);
-      }
-    },
+      },
     [baseURL, fetchMessages]
   );
 
   const handleSearch = useMemo(
     () => async (query: string) => {
       console.log("handling search: ", query);
+      setInbox([]);
       setSearchText(query);
+      setCurrentPage(1); // Reset to first page
+      setHasMore(true); // Reset hasMore
       // console.log("searchText1:", searchText);
 
       if (query.trim() === "") {
         // If the search query is empty, fetch the standard inbox
-        fetchInbox();
+        console.log("one");
+        await fetchInbox(undefined, 1);
         return;
       }
       //setIsSearching(true);
       try {
         // Fetch inbox with the search term
-        await fetchInbox(query);
+        console.log("two");
+        await fetchInbox(query, 1);
       } catch (error) {
         console.error("Error performing search:", error);
       }
@@ -240,20 +294,42 @@ export default function ChatProvider(props: { children: any }) {
     [fetchInbox, inbox]
   );
 
+  const handleToggleSearch = (toggle: boolean) => {
+    setToggleSearch(toggle);
+    if (toggle) {
+      const filteredInbox: Inbox[] =
+        inbox.filter((item) => Number(item.notificationsCount) > 0) ?? [];
+      setInbox(filteredInbox);
+    } else {
+      setInbox([]);
+      fetchInbox(searchText.trim() !== "" ? searchText : undefined);
+    }
+  };
+
+  const loadMore = useCallback(() => {
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    console.log("Loading more: ", nextPage);
+    fetchInbox(searchText.trim() !== "" ? searchText : undefined, nextPage);
+  }, [hasMore, currentPage, fetchInbox, searchText]);
+
   useEffect(() => {
     // Define the async function inside useEffect to call the API
     const fetchData = async () => {
       // console.log("Searchtext: ", searchText);
       try {
         // API endpoint
-        if (lastUpdateRef.current && lastUpdateRef.current !== "") {
-          const payload = {
-            clientLastUpdate: lastUpdateRef.current,
-          };
-          const response = await axios.post(`${baseURL}/event-check-inbox`, payload);
-          console.log(response.data);
-          if (response.data && response.data.data) {
-            fetchInbox(searchText.trim() !== "" ? searchText : undefined);
+        if (!isFetchInboxRef.current) {
+          if (lastUpdateRef.current && lastUpdateRef.current !== "") {
+            const payload = {
+              clientLastUpdate: lastUpdateRef.current,
+            };
+            const response = await axios.post(`${baseURL}/event-check-inbox`, payload);
+            console.log(response.data);
+            if (response.data && response.data.data) {
+              setInbox([]);
+              fetchInbox(searchText.trim() !== "" ? searchText : undefined);
+            }
           }
         }
       } catch (error) {
@@ -263,18 +339,24 @@ export default function ChatProvider(props: { children: any }) {
 
     fetchData();
 
-    const intervalId = setInterval(fetchData, 5000);
+    const intervalId = setInterval(fetchData, 10000);
 
     return () => clearInterval(intervalId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchText]);
 
+  // useEffect(() => {
+  //   if (inbox.length === 0) {
+  //     console.log("Empty Inbox");
+  //     fetchInbox();
+  //   }
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [inbox]);
+
   useEffect(() => {
-    if (inbox.length === 0) {
-      fetchInbox();
-    }
+    fetchInbox();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inbox]);
+  }, []);
 
   const handleFileUpload = async (file: File, msg: string, type: string) => {
     try {
@@ -315,11 +397,15 @@ export default function ChatProvider(props: { children: any }) {
         firstOpenChat,
         searchText,
         searchResults,
+        hasMore,
+        isFetchInbox,
         onChangeChat: handleChangeChat,
         onSendMessage: handleSendMessage,
         onUploadFile: handleFileUpload,
         onFirstOpenChat: handleFirstOpenChat,
         onSearch: handleSearch,
+        onToggleSearch: handleToggleSearch,
+        loadMore,
       }}
     >
       {children}

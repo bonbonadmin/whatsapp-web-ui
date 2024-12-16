@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { BsFillMoonFill, BsMoon } from "react-icons/bs";
+import InfiniteScroll from "react-infinite-scroll-component";
 
 import SidebarAlert from "./alert";
 import InboxContact from "./contacts";
@@ -13,11 +14,14 @@ import {
   Actions,
   Avatar,
   ContactContainer,
+  EndMessage,
   Header,
   ImageWrapper,
+  Loader,
   SidebarContainer,
   ThemeIconContainer,
 } from "./styles";
+import ToggleSearch from "../search-toggle";
 
 export default function Sidebar() {
   const theme = useAppTheme();
@@ -37,9 +41,7 @@ export default function Sidebar() {
   return (
     <SidebarContainer>
       <Header>
-        <ImageWrapper>
-          {/* <Avatar src="/assets/images/profile.png" /> */}
-        </ImageWrapper>
+        <ImageWrapper>{/* <Avatar src="/assets/images/profile.png" /> */}</ImageWrapper>
         <Actions>
           <ThemeIconContainer onClick={handleChangeThemeMode}>
             {theme.mode === "light" ? <BsMoon /> : <BsFillMoonFill />}
@@ -68,16 +70,32 @@ export default function Sidebar() {
         </Actions>
       </Header>
       {/* <SidebarAlert /> */}
-      <SearchField />
-      <ContactContainer>
-        {chatCtx.inbox.map((inbox) => (
-          <InboxContact
-            key={inbox.id}
-            inbox={inbox}
-            isActive={inbox.id === chatCtx.activeChat?.id}
-            onChangeChat={handleChangeChat}
-          />
-        ))}
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "0 8px" }}>
+        <div style={{ flex: 1 }}>
+          <SearchField />
+        </div>
+        <div>
+          <ToggleSearch />
+        </div>
+      </div>
+      <ContactContainer id="scrollableDiv" style={{ overflow: "auto", height: "80vh" }}>
+        <InfiniteScroll
+          dataLength={chatCtx.inbox.length}
+          next={chatCtx.loadMore}
+          hasMore={chatCtx.hasMore}
+          loader={<Loader>Loading..</Loader>}
+          endMessage={<EndMessage>No more chats</EndMessage>}
+          scrollableTarget="scrollableDiv"
+        >
+          {chatCtx.inbox.map((inbox) => (
+            <InboxContact
+              key={inbox.id}
+              inbox={inbox}
+              isActive={inbox.id === chatCtx.activeChat?.id}
+              onChangeChat={handleChangeChat}
+            />
+          ))}
+        </InfiniteScroll>
       </ContactContainer>
     </SidebarContainer>
   );

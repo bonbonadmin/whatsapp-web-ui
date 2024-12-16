@@ -87,3 +87,37 @@ export const ContactContainer = styled.div`
   background: ${(props) => props.theme.common.secondaryColor};
   border-top: 1px solid ${(props) => props.theme.common.borderColor};
 `;
+
+export const Loader = styled.p`
+  text-align: center;
+  color: ${(props) => props.theme.common.subHeadingColor};
+  font-size: 1rem;
+  margin: 20px 0;
+  animation: fadeIn 0.5s ease-in-out;
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+`;
+
+export const EndMessage = styled.p`
+  text-align: center;
+  color: ${(props) => props.theme.common.subHeadingColor};
+  font-size: 0.9rem;
+  margin: 20px 0;
+  animation: fadeIn 0.5s ease-in-out;
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+`;
