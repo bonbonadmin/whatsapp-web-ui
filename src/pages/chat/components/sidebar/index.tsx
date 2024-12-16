@@ -21,6 +21,7 @@ import {
   SidebarContainer,
   ThemeIconContainer,
 } from "./styles";
+import ToggleSearch from "../search-toggle";
 
 export default function Sidebar() {
   const theme = useAppTheme();
@@ -40,9 +41,7 @@ export default function Sidebar() {
   return (
     <SidebarContainer>
       <Header>
-        <ImageWrapper>
-          {/* <Avatar src="/assets/images/profile.png" /> */}
-        </ImageWrapper>
+        <ImageWrapper>{/* <Avatar src="/assets/images/profile.png" /> */}</ImageWrapper>
         <Actions>
           <ThemeIconContainer onClick={handleChangeThemeMode}>
             {theme.mode === "light" ? <BsMoon /> : <BsFillMoonFill />}
@@ -71,7 +70,14 @@ export default function Sidebar() {
         </Actions>
       </Header>
       {/* <SidebarAlert /> */}
-      <SearchField />
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "0 8px" }}>
+        <div style={{ flex: 1 }}>
+          <SearchField />
+        </div>
+        <div>
+          <ToggleSearch />
+        </div>
+      </div>
       <ContactContainer id="scrollableDiv" style={{ overflow: "auto", height: "80vh" }}>
         <InfiniteScroll
           dataLength={chatCtx.inbox.length}
