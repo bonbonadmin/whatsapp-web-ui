@@ -10,7 +10,7 @@ import SearchSection from "./components/search-section";
 import useNavigateToChat from "./hooks/useNavigateToChat";
 import { Container, Body, Background, FooterContainer, ScrollButton } from "./styles";
 import { useChatContext } from "../context/chat";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import React from "react";
 
 export default function ChatRoomPage() {
@@ -44,6 +44,18 @@ export default function ChatRoomPage() {
   // // eslint-disable-next-line react-hooks/exhaustive-deps
   // }, [chatCtx.firstOpenChat])
 
+  const [selectedSearchId, setSelectedSearchId] = useState<string>('');
+
+  const handleClickSearch = (id: string) => {
+    setSelectedSearchId(id)
+  }
+
+  useEffect(() => {
+    if (!isSearchOpen) {
+      setSelectedSearchId('')
+    }
+  }, [isSearchOpen])
+
   return (
     <ChatLayout>
       <Container>
@@ -61,6 +73,8 @@ export default function ChatRoomPage() {
             shouldScrollToBottom={shouldScrollToBottom}
             listMessages={participantMessages}
             testToBottom={chatCtx.firstOpenChat}
+            isSearchOpen={isSearchOpen}
+            selectedSearchId={selectedSearchId}
           />
           <FooterContainer>
             {isShowIcon && (
@@ -72,7 +86,7 @@ export default function ChatRoomPage() {
           </FooterContainer>
         </Body>
         <Sidebar title="Search" isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)}>
-          <SearchSection />
+          <SearchSection onClickSearch={handleClickSearch} isSearchActive={isSearchOpen} />
         </Sidebar>
         <Sidebar
           title="Contact Info"

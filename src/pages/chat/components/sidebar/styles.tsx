@@ -1,11 +1,12 @@
 import styled from "styled-components";
 
-export const SidebarContainer = styled.aside`
+export const SidebarContainer = styled.aside<{ customStyles?: React.CSSProperties }>`
   min-width: 300px;
   flex: 40%;
   border-right: 1px solid ${(props) => props.theme.common.borderColor};
   display: flex;
   flex-direction: column;
+  ${(props) => props.customStyles && { ...props.customStyles }}
 
   @media screen and (min-width: 1301px) {
     flex: 30%;

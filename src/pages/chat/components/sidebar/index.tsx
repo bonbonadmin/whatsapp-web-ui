@@ -39,7 +39,11 @@ export default function Sidebar() {
   };
 
   return (
-    <SidebarContainer>
+    <SidebarContainer
+      customStyles={{
+        overflow: 'hidden'
+      }}
+    >
       <Header>
         <ImageWrapper>{/* <Avatar src="/assets/images/profile.png" /> */}</ImageWrapper>
         <Actions>

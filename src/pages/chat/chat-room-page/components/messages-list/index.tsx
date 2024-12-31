@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useMemo, useState } from "react";
+import { CSSProperties, forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import Icon from "common/components/icons";
@@ -19,13 +19,15 @@ import { useChatContext } from "pages/chat/context/chat";
 type MessagesListProps = {
   onShowBottomIcon: Function;
   listMessages: Message[];
+  isSearchOpen: boolean;
   shouldScrollToBottom?: boolean;
   testToBottom?: boolean;
+  selectedSearchId?: string;
 };
 
 export default function MessagesList(props: MessagesListProps) {
-  const { onShowBottomIcon, shouldScrollToBottom, testToBottom } = props;
-  console.log('test to bottom', testToBottom);
+  const { onShowBottomIcon, shouldScrollToBottom, testToBottom, selectedSearchId, isSearchOpen } = props;
+  console.log("test to bottom", testToBottom);
   const chatCtx = useChatContext();
 
   const params = useParams();
@@ -37,6 +39,17 @@ export default function MessagesList(props: MessagesListProps) {
     testToBottom
   );
   // console.log(lastMessageRef);
+
+  const messageRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
+  useEffect(() => {
+    if (selectedSearchId  && selectedSearchId !== '' && isSearchOpen) {
+      const targetMessage = messageRefs.current[selectedSearchId];
+      if (targetMessage) {
+        targetMessage.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  }, [selectedSearchId, isSearchOpen, testToBottom])
 
   return (
     <Container ref={containerRef}>
@@ -55,7 +68,10 @@ export default function MessagesList(props: MessagesListProps) {
             <SingleMessage
               key={message.id}
               message={message}
-              ref={isLastMessage ? lastMessageRef : null}
+              ref={(el) => {
+                messageRefs.current[message.id] = el as HTMLDivElement | null;
+              }}
+              isHighlighted={isSearchOpen && message.id === selectedSearchId}
             />
           );
         })}
@@ -64,28 +80,114 @@ export default function MessagesList(props: MessagesListProps) {
   );
 }
 
-const SingleMessage = forwardRef((props: { message: Message }, ref: any) => {
-  const { message } = props;
+const SingleMessage = forwardRef((props: { message: Message, isHighlighted?: boolean }, ref: any) => {
+  const { message, isHighlighted } = props;
+  const [isModalOpen, setModalOpen] = useState(false); // State for modal visibility
+  const baseURL = process.env.REACT_APP_API_URL ?? "";
+
+  const fileName = message.mediaLocation
+    ? message.mediaLocation.substring(message.mediaLocation.lastIndexOf('/') + 1)
+    : "";
 
   return (
-    <ChatMessage
-      key={message.id}
-      className={message.isOpponent ? "chat__msg--received" : "chat__msg--sent"}
-      ref={ref}
-    >
-      <span>{message.body}</span>
-      <ChatMessageFiller />
-      <ChatMessageFooter>
-        <span>{message.timestamp}</span>
-        {!message.isOpponent && (
-          <Icon
-            id={`${message.messageStatus === "SENT" ? "singleTick" : "doubleTick"}`}
-            className={`chat__msg-status-icon ${
-              message.messageStatus === "READ" ? "chat__msg-status-icon--blue" : ""
-            }`}
-          />
+    <>
+      <ChatMessage
+        key={message.id}
+        className={message.isOpponent ? "chat__msg--received" : "chat__msg--sent"}
+        ref={ref}
+        style={{
+          border: isHighlighted ? "1px solid #FFD700" : "none",
+        }}
+      >
+        {message.messageType === "image" ? (
+          <div>
+            <img
+              src={`${baseURL}/${message.mediaLocation}`}
+              alt="img"
+              style={{
+                maxWidth: "200px",
+                borderRadius: "8px",
+                objectFit: "cover",
+                cursor: "pointer",
+              }}
+              onClick={() => setModalOpen(true)}
+            />
+            <p>{message.body}</p>
+          </div>
+        ) : message.messageType === "document" ? (
+          <a
+            href={baseURL + "/" + message.mediaLocation}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              // color: "#0066cc", // Link color
+              textDecoration: "underline",
+              fontWeight: "bold",
+            }}
+          >
+            {fileName}
+          </a>
+        ) : (
+          <span>{message.body}</span>
         )}
-      </ChatMessageFooter>
-    </ChatMessage>
+        <ChatMessageFiller />
+        <ChatMessageFooter>
+          <span>{message.timestamp}</span>
+          {!message.isOpponent && (
+            <Icon
+              id={`${message.messageStatus === "SENT" ? "singleTick" : "doubleTick"}`}
+              className={`chat__msg-status-icon ${
+                message.messageStatus === "READ" ? "chat__msg-status-icon--blue" : ""
+              }`}
+            />
+          )}
+        </ChatMessageFooter>
+      </ChatMessage>
+
+      {/* Modal for Image Preview */}
+      {isModalOpen && (
+        <div style={modalStyles.overlay} onClick={() => setModalOpen(false)}>
+          <div style={modalStyles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <img
+              src={`${baseURL}/${message.mediaLocation}`}
+              alt="Preview"
+              style={modalStyles.image}
+            />
+          </div>
+        </div>
+      )}
+    </>
   );
 });
+
+const modalStyles: Record<string, CSSProperties> = {
+  overlay: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.8)", // Dimmed background
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
+  },
+  modalContent: {
+    padding: "0", // Remove padding
+    borderRadius: "10px",
+    maxWidth: "60%", // Limit modal width
+    maxHeight: "60%", // Limit modal height
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
+    backgroundColor: "transparent", // Make the background transparent
+  },
+  image: {
+    maxWidth: "50%", // Ensure the image fits within the modal
+    maxHeight: "50%", // Ensure the image fits within the modal
+    objectFit: "contain", // Scale the image while maintaining aspect ratio
+    borderRadius: "8px", // Optional rounded corners
+  },
+};

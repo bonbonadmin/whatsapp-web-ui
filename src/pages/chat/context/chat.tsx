@@ -165,6 +165,8 @@ export default function ChatProvider(props: { children: any }) {
                   timestamp: timeStamp,
                   messageStatus: value.message_status === 1 ? "READ" : "DELIVERED",
                   isOpponent: value.from_me === 0 ? true : false,
+                  messageType: value.message_type,
+                  mediaLocation: value.media_location
                 };
                 newMessages.push(data);
               });
