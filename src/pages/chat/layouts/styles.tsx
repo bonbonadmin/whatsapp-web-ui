@@ -35,19 +35,23 @@ export const Message = styled.p`
 export const Content = styled.div`
   width: 100%;
   height: 100vh;
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-top: env(safe-area-inset-top);
   max-width: 1450px;
   margin: 0 auto;
   box-shadow: ${(props) => props.theme.layout.contentBoxShadowColor};
   position: relative;
   z-index: 100;
   display: flex;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  
 
   @media screen and (max-width: 500px) {
     display: none;
   }
 
-  @media screen and (min-width: 1450px) {
+  @media screen and (max-width: 1050px) {
     height: calc(100vh - 40px);
   }
 `;
