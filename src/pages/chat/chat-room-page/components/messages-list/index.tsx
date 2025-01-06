@@ -20,13 +20,14 @@ type MessagesListProps = {
   onShowBottomIcon: Function;
   listMessages: Message[];
   isSearchOpen: boolean;
+  lastMessageId: string;
   shouldScrollToBottom?: boolean;
   testToBottom?: boolean;
   selectedSearchId?: string;
 };
 
 export default function MessagesList(props: MessagesListProps) {
-  const { onShowBottomIcon, shouldScrollToBottom, testToBottom, selectedSearchId, isSearchOpen } = props;
+  const { onShowBottomIcon, shouldScrollToBottom, testToBottom, selectedSearchId, isSearchOpen, lastMessageId } = props;
   console.log("test to bottom", testToBottom);
   const chatCtx = useChatContext();
 
@@ -38,7 +39,6 @@ export default function MessagesList(props: MessagesListProps) {
     params.id,
     testToBottom
   );
-  // console.log(lastMessageRef);
 
   const messageRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
@@ -49,7 +49,13 @@ export default function MessagesList(props: MessagesListProps) {
         targetMessage.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     }
-  }, [selectedSearchId, isSearchOpen, testToBottom])
+    if (shouldScrollToBottom) {
+      const targetMessage = messageRefs.current[lastMessageId];
+      if (targetMessage) {
+        targetMessage.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  }, [selectedSearchId, isSearchOpen, shouldScrollToBottom, lastMessageId])
 
   return (
     <Container ref={containerRef}>

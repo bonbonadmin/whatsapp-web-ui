@@ -44,17 +44,19 @@ export default function ChatRoomPage() {
   // // eslint-disable-next-line react-hooks/exhaustive-deps
   // }, [chatCtx.firstOpenChat])
 
-  const [selectedSearchId, setSelectedSearchId] = useState<string>('');
+  const [selectedSearchId, setSelectedSearchId] = useState<string>("");
 
   const handleClickSearch = (id: string) => {
-    setSelectedSearchId(id)
-  }
+    setSelectedSearchId(id);
+  };
+
+  const lastMessage = participantMessages[participantMessages.length - 1].id;
 
   useEffect(() => {
     if (!isSearchOpen) {
-      setSelectedSearchId('')
+      setSelectedSearchId("");
     }
-  }, [isSearchOpen])
+  }, [isSearchOpen]);
 
   return (
     <ChatLayout>
@@ -75,10 +77,19 @@ export default function ChatRoomPage() {
             testToBottom={chatCtx.firstOpenChat}
             isSearchOpen={isSearchOpen}
             selectedSearchId={selectedSearchId}
+            lastMessageId={lastMessage}
           />
           <FooterContainer>
             {isShowIcon && (
-              <ScrollButton ref={scrollButton} onClick={() => setShouldScrollToBottom(true)}>
+              <ScrollButton
+                ref={scrollButton}
+                onClick={() => {
+                  setShouldScrollToBottom(true);
+                  setTimeout(() => {
+                    setShouldScrollToBottom(false);
+                  }, 500);
+                }}
+              >
                 <Icon id="downArrow" />
               </ScrollButton>
             )}
@@ -93,7 +104,11 @@ export default function ChatRoomPage() {
           isOpen={isProfileOpen}
           onClose={() => setIsProfileOpen(false)}
         >
-          <ProfileSection name={activeInbox?.name ?? ""} image={activeInbox?.image ?? ""} phoneNumber={activeInbox?.participantId ?? ""} />
+          <ProfileSection
+            name={activeInbox?.name ?? ""}
+            image={activeInbox?.image ?? ""}
+            phoneNumber={activeInbox?.participantId ?? ""}
+          />
         </Sidebar>
       </Container>
     </ChatLayout>
