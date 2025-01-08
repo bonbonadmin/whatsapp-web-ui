@@ -1,25 +1,26 @@
 import React from "react";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
-
+import { Routes, Route } from "react-router-dom";
 import ChatProvider from "pages/chat/context/chat";
+import ProtectedRoute from "components/ProtectedRoute";
+
 const ChatPage = React.lazy(() => import("pages/chat/chat-room-page"));
 const UnSelectedChatPage = React.lazy(() => import("pages/chat/unselected-page"));
-
-const router = createBrowserRouter([
-  {
-    path: "/:id",
-    element: <ChatPage />,
-  },
-  {
-    path: "/",
-    element: <UnSelectedChatPage />,
-  },
-]);
+const LoginPage = React.lazy(() => import("pages/login"));
 
 export default function AppRoutes() {
   return (
     <ChatProvider>
-      <RouterProvider router={router} />
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/:id"
+          element={<ProtectedRoute Component={ChatPage} />}
+        />
+        <Route
+          path="/"
+          element={<ProtectedRoute Component={UnSelectedChatPage} />}
+        />
+      </Routes>
     </ChatProvider>
   );
 }
