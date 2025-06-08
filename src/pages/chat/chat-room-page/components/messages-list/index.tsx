@@ -90,6 +90,11 @@ const SingleMessage = forwardRef((props: { message: Message, isHighlighted?: boo
   const { message, isHighlighted } = props;
   const [isModalOpen, setModalOpen] = useState(false); // State for modal visibility
   const baseURL = process.env.REACT_APP_API_URL ?? "";
+  // Determine the full URL for media
+  const mediaUrl =
+    message.mediaLocation?.startsWith("http://") || message.mediaLocation?.startsWith("https://")
+      ? message.mediaLocation
+      : `${baseURL}/${message.mediaLocation}`;
 
   const fileName = message.mediaLocation
     ? message.mediaLocation.substring(message.mediaLocation.lastIndexOf('/') + 1)
@@ -108,7 +113,7 @@ const SingleMessage = forwardRef((props: { message: Message, isHighlighted?: boo
         {message.messageType === "image" ? (
           <div>
             <img
-              src={`${baseURL}/${message.mediaLocation}`}
+              src={mediaUrl}
               alt="img"
               style={{
                 maxWidth: "200px",
@@ -122,7 +127,7 @@ const SingleMessage = forwardRef((props: { message: Message, isHighlighted?: boo
           </div>
         ) : message.messageType === "document" ? (
           <a
-            href={baseURL + "/" + message.mediaLocation}
+            href={mediaUrl}
             target="_blank"
             rel="noopener noreferrer"
             style={{
