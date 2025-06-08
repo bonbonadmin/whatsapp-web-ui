@@ -116,6 +116,12 @@ export const TextArea = styled.textarea`
   }
 `;
 
+export const ControlsWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+`;
+
 export const SendMessageButton = styled.button`
   .icon {
     margin-left: 8px;

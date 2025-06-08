@@ -30,6 +30,7 @@ export type MessageTextPayload = {
   to?: string;
   textMessage?: string;
   mediaType?: string;
+  nonManual?: boolean;
 };
 
 export type MessagePayload = {
@@ -38,6 +39,7 @@ export type MessagePayload = {
   mediaType?: string;
   mediaId?: string;
   filePath?: string;
+  nonManual?: boolean;
 };
 
 const messages: Message[] = [

@@ -9,6 +9,7 @@ import {
   SendMessageButton,
   TextArea,
   Wrapper,
+  ControlsWrapper,
 } from "./styles";
 import { useChatContext } from "pages/chat/context/chat";
 import { Message, MessageTextPayload } from "../messages-list/data/get-messages";
@@ -16,6 +17,7 @@ import React from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Modal from "@mui/material/Modal";
+import Checkbox from "@mui/material/Checkbox";
 
 const attachButtons = [
   // { icon: "attachRooms", label: "Choose room" },
@@ -44,6 +46,7 @@ export default function Footer() {
   const [fileUpload, setFileUpload] = useState<File>();
   const [open, setOpen] = useState(false);
   const [uploadType, setUploadType] = useState("image");
+  const [nonManual, setNonManual] = useState(false);
 
   const hiddenUploadImage = React.useRef<HTMLInputElement>(null);
   const hiddenUploadDoc = React.useRef<HTMLInputElement>(null);
@@ -52,7 +55,7 @@ export default function Footer() {
 
   const submitMessage = () => {
     if (open && fileUpload) {
-      chatCtx.onUploadFile(fileUpload, messageValue, uploadType);
+      chatCtx.onUploadFile(fileUpload, messageValue, uploadType, nonManual);
       setMessageValue("");
       setFileUpload(undefined);
       setOpen(false);
@@ -61,6 +64,7 @@ export default function Footer() {
         to: chatCtx.activeChat?.participantId,
         textMessage: messageValue,
         mediaType: "text",
+        nonManual,
       };
       chatCtx.onSendMessage(newMsg);
       setMessageValue("");
@@ -163,9 +167,17 @@ export default function Footer() {
         placeholder="Type a message here .."
         style={{ fontSize: "0.90rem" }}
       />
-      <SendMessageButton onClick={submitMessage}>
-        <Icon id="send" className="icon" />
-      </SendMessageButton>
+      <ControlsWrapper>
+        <Checkbox
+          checked={nonManual}
+          onChange={e => setNonManual(e.target.checked)}
+          inputProps={{ "aria-label": "non manual" }}
+        />
+        <SendMessageButton onClick={submitMessage}>
+          <Icon id="send" className="icon"/>
+        </SendMessageButton>
+      </ControlsWrapper>
+
 
       <Modal
         open={open}

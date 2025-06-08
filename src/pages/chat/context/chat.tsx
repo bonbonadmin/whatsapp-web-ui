@@ -28,7 +28,7 @@ type ChatContextProp = {
   onChangeChat: (chat: Inbox) => void;
   onFirstOpenChat: (condition: boolean) => void;
   onSendMessage: (message: MessagePayload) => void;
-  onUploadFile: (file: File, msg: string, type: string) => void;
+  onUploadFile: (file: File, msg: string, type: string, nonManual: boolean) => void;
   onSearch: (query: string) => void;
   onToggleSearch: (toggle: boolean) => void;
   loadMore: () => void;
@@ -360,7 +360,7 @@ export default function ChatProvider(props: { children: any }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleFileUpload = async (file: File, msg: string, type: string) => {
+  const handleFileUpload = async (file: File, msg: string, type: string, nonManual: boolean) => {
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -379,6 +379,7 @@ export default function ChatProvider(props: { children: any }) {
         mediaType: type,
         mediaId: uploadMedia.data.mediaId,
         filePath: uploadMedia.data.filePath,
+        nonManual,
       };
       console.log(payload);
 
