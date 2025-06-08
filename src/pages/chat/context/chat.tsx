@@ -125,6 +125,7 @@ export default function ChatProvider(props: { children: any }) {
         mediaType: msg.mediaType,
         mediaId: msg.mediaId ?? null,
         filePath: msg.filePath ?? null,
+        nonManual: msg.nonManual ?? false,
       };
 
       await axios.post(`${baseURL}/message/send`, payload);
