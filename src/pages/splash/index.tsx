@@ -18,11 +18,11 @@ export default function SplashPage(props: SplashPageProps) {
 
   return (
     <Container>
-      <LogoWrapper>
+      {/* <LogoWrapper>
         <Logo id="whatsapp" />
-      </LogoWrapper>
+      </LogoWrapper> */}
       <Progress progess={progress} />
-      <Title>WhatsApp</Title>
+      <Title>Message</Title>
       <SubTitle>
         <EncryptionIcon id="lock" /> End-to-end encrypted. Built by Jazim Abbas & Bonbon.
         {/* <Link href="https://github.com/jazimabbas" target="_blank">

@@ -51,9 +51,9 @@ const LoginPage: React.FC = () => {
         {/* Left Section with Illustration */}
         <div style={localStyles.leftSection}>
           <div style={localStyles.imageWrapper}>
-            <img src={getImageURL()} alt="WhatsApp Web" style={localStyles.image} />
+            <img src={getImageURL()} alt="Message Web" style={localStyles.image} />
           </div>
-          <h2 style={localStyles.leftTitle}>WhatsApp Web</h2>
+          <h2 style={localStyles.leftTitle}>Message Web</h2>
           <p style={localStyles.leftDescription}>
             Send and receive messages without keeping your phone online.
           </p>
