@@ -44,7 +44,7 @@ export default function Sidebar() {
           <ThemeIconContainer onClick={handleChangeThemeMode}>
             {theme.mode === "light" ? <BsMoon /> : <BsFillMoonFill />}
           </ThemeIconContainer>
-          <button aria-label="Status">
+          {/* <button aria-label="Status">
             <Icon id="status" className="icon" />
           </button>
           <button aria-label="New chat">
@@ -64,7 +64,7 @@ export default function Sidebar() {
               "Settings",
               "Log out",
             ]}
-          />
+          /> */}
         </Actions>
       </Header>
       {/* <SidebarAlert /> */}

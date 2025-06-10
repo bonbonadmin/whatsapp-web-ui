@@ -24,11 +24,11 @@ export default function SplashPage(props: SplashPageProps) {
       <Progress progess={progress} />
       <Title>Message</Title>
       <SubTitle>
-        <EncryptionIcon id="lock" /> End-to-end encrypted. Built by{" "}
-        <Link href="https://github.com/jazimabbas" target="_blank">
+        <EncryptionIcon id="lock" /> End-to-end encrypted. Built by Jazim Abbas & Bonbon.
+        {/* <Link href="https://github.com/jazimabbas" target="_blank">
           Jazim Abbas
         </Link>{" "}
-        ❤️.
+        ❤️. */}
       </SubTitle>
     </Container>
   );

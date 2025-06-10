@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { inbox } from "../data/inbox";
 import { Inbox, InboxResponse } from "common/types/common.type";
 import {
@@ -51,10 +51,24 @@ export default function ChatProvider(props: { children: any }) {
   const { children } = props;
 
   const [user] = useState<User>(initialValue.user);
-  const [inbox, setInbox] = useState<Inbox[]>(initialValue.inbox);
+  const [inbox, setInbox] = useState<Inbox[]>([]);
   const [activeChat, setActiveChat] = useState<Inbox>();
   const [participantMessages, setMessages] = useState<Message[]>(initialValue.participantMessages);
   const [firstOpenChat, setFirstOpenChat] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState("");
+  const baseURL = process.env.REACT_APP_API_URL;
+
+  const activeChatRef = useRef(activeChat);
+  const lastUpdateRef = useRef(lastUpdate);
+
+  // Update the ref whenever activeChat changes
+  useEffect(() => {
+    activeChatRef.current = activeChat;
+  }, [activeChat]);
+
+  useEffect(() => {
+    lastUpdateRef.current = lastUpdate;
+  }, [lastUpdate]);
 
   const handleChangeChat = (chat: Inbox) => {
     setActiveChat(chat);
@@ -75,7 +89,7 @@ export default function ChatProvider(props: { children: any }) {
         filePath: msg.filePath ?? null,
       };
 
-      await axios.post("https://wa-svc.bonbon.co.id/message/send", payload);
+      await axios.post(`${baseURL}/message/send`, payload);
       fetchMessages(msg.to);
     } catch (error) {
       console.error("Error fetching messages list:", error);
@@ -86,15 +100,26 @@ export default function ChatProvider(props: { children: any }) {
     () => async (id: any) => {
       try {
         axios
-          .get("https://wa-svc.bonbon.co.id/message-inbox/" + id)
+          .get(`${baseURL}/message-inbox/` + id)
           .then((response) => {
             const newMessages: Message[] = [];
             if (response.data.data.length) {
               response.data.data.forEach((value: MessageResponse) => {
+                // const timeStamp =
+                //   new Date(value.created_at).getHours() +
+                //   ":" +
+                //   new Date(value.created_at).getMinutes();
                 const timeStamp =
-                  new Date(value.created_at).getHours() +
-                  ":" +
-                  new Date(value.created_at).getMinutes();
+                  new Date().toDateString() === new Date(value.created_at).toDateString()
+                    ? new Date(value.created_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })
+                    : new Date(value.created_at).toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "2-digit",
+                      });
                 const data: Message = {
                   id: value.id,
                   body: value.message_text,
@@ -118,48 +143,92 @@ export default function ChatProvider(props: { children: any }) {
     []
   );
 
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      axios
-        .get("https://wa-svc.bonbon.co.id/message-inbox")
-        .then((response) => {
-          const newInbox: Inbox[] = [];
-          response.data.data.forEach((value: InboxResponse) => {
-            const timeStamp =
-              new Date().toDateString() === new Date(value.created_at).toDateString()
-                ? new Date(value.created_at).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: false,
-                  })
-                : new Date(value.created_at).toLocaleDateString('en-GB');
-            const data: Inbox = {
-              id: value.id,
-              participantId: value.participant_id,
-              name: value.participant_name ?? value.participant_id,
-              image: "/assets/images/boy4.jpeg",
-              lastMessage:
-                value.message_text.length > 50
-                  ? value.message_text.slice(0, 50 - 1) + "...."
-                  : value.message_text,
-              timestamp: timeStamp,
-              messageStatus: value.message_status === 1 ? "READ" : "DELIVERED",
-              notificationsCount: value.unread_msg,
-            };
-            newInbox.push(data);
-            if (data.participantId === activeChat?.participantId && value.message_status === 0) {
-              fetchMessages(data.participantId);
-            }
-          });
-          setInbox(newInbox);
-        })
-        .catch((err) => {
-          console.log(err.message);
+  // Function to fetch inbox data
+  const fetchInbox = () => {
+    axios
+      .get(`${baseURL}/message-inbox`)
+      .then((response) => {
+        const newInbox: Inbox[] = [];
+        response.data.data.forEach((value: InboxResponse) => {
+          const timeStamp =
+            new Date().toDateString() === new Date(value.created_at).toDateString()
+              ? new Date(value.created_at).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                })
+              : new Date(value.created_at).toLocaleDateString("en-GB");
+          const data: Inbox = {
+            id: value.id,
+            participantId: value.participant_id,
+            name: value.participant_name ?? value.participant_id,
+            image: "/assets/images/boy4.jpeg",
+            lastMessage:
+              value.message_text.length > 50
+                ? value.message_text.slice(0, 50 - 1) + "...."
+                : value.message_text,
+            timestamp: timeStamp,
+            messageStatus: value.message_status === 1 ? "READ" : "DELIVERED",
+            notificationsCount: value.unread_msg,
+            updatedAt: value.updated_at,
+          };
+          newInbox.push(data);
+
+          // Fetch messages for active chat if conditions are met
+          if (
+            data.participantId === activeChatRef.current?.participantId &&
+            value.message_status === 0
+          ) {
+            fetchMessages(data.participantId);
+          }
         });
-    }, 5000);
+        if (newInbox && newInbox.length > 0) {
+          const sortUpdatedAt = [...newInbox].sort(
+            (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          )[0];
+          setLastUpdate(sortUpdatedAt.updatedAt);
+        }
+        setInbox(newInbox);
+      })
+      .catch((err) => {
+        console.log(err.message);
+      });
+  };
+
+  useEffect(() => {
+    // Define the async function inside useEffect to call the API
+    const fetchData = async () => {
+      try {
+        // API endpoint
+        if (lastUpdateRef.current && lastUpdateRef.current !== "") {
+          const payload = {
+            clientLastUpdate: lastUpdateRef.current,
+          };
+          const response = await axios.post(`${baseURL}/event-check-inbox`, payload);
+          console.log(response.data);
+          if (response.data && response.data.data) {
+            fetchInbox()
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+
+    fetchData();
+
+    const intervalId = setInterval(fetchData, 5000);
 
     return () => clearInterval(intervalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (inbox.length === 0) {
+      fetchInbox();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inbox]);
 
   const handleFileUpload = async (file: File, msg: string, type: string) => {
     try {
@@ -170,14 +239,9 @@ export default function ChatProvider(props: { children: any }) {
         "Content-Type": "multipart/form-data",
       };
 
-      const uploadMedia = await axios.post(
-        "https://wa-svc.bonbon.co.id/message/uploadMedia",
-        formData,
-        {
-          headers,
-        }
-      );
-      console.log(uploadMedia);
+      const uploadMedia = await axios.post(`${baseURL}/message/uploadMedia`, formData, {
+        headers,
+      });
 
       const payload = {
         to: activeChat?.participantId,
@@ -188,7 +252,7 @@ export default function ChatProvider(props: { children: any }) {
       };
       console.log(payload);
 
-      await axios.post("https://wa-svc.bonbon.co.id/message/send", payload);
+      await axios.post(`${baseURL}/message/send`, payload);
       fetchMessages(activeChat?.participantId);
     } catch (error) {
       console.error("Error upload image", error);

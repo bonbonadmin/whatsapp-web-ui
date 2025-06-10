@@ -45,16 +45,19 @@ export default function MessagesList(props: MessagesListProps) {
         Messages are end-to-end encrypted. No one outside of this chat, not even Message, can read
         or listen to them. Click to learn more.
       </EncryptionMessage>
-      <DateWrapper>
+      {/* <DateWrapper>
         <Date> TODAY </Date>
-      </DateWrapper>
+      </DateWrapper> */}
       <MessageGroup>
-        {props.listMessages.map((message) => {
-          if (message.id === chatCtx.activeChat?.id) {
-            return <SingleMessage key={message.id} message={message} ref={lastMessageRef} />;
-          } else {
-            return <SingleMessage key={message.id} message={message} />;
-          }
+        {props.listMessages.map((message, index) => {
+          const isLastMessage = index === props.listMessages.length - 1;
+          return (
+            <SingleMessage
+              key={message.id}
+              message={message}
+              ref={isLastMessage ? lastMessageRef : null}
+            />
+          );
         })}
       </MessageGroup>
     </Container>
