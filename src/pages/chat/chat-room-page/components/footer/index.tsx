@@ -132,26 +132,55 @@ export default function Footer() {
 
   const handleSendTemplate = () => {
     if (!selectedTemplate) return;
-    const params = Object.keys(varInputs).map(key => ({ type: 'text', text: varInputs[key] }));
-    const components = selectedTemplate.all_component
-      .filter((c: any) => c.type === 'BODY')
-      .map(() => ({ type: 'body', parameters: params }));
 
+    // Always treat all_component as an array
+    const comps: WhatsappComponent[] = selectedTemplate.all_component ?? [];
+
+    // 1) Build body parameters
+    const params = Object.keys(varInputs).map(key => ({
+      type: 'text' as const,
+      text: varInputs[key]
+    }));
+
+    // 2) Start with any BODY component
+    const payloadComponents: any[] = [];
+    if (params.length > 0) {
+      payloadComponents.push({
+        type: 'body' as const,
+        parameters: params
+      });
+    }
+
+    // 3) Append any BUTTONS components
+    const btnGroup = comps.find(c => c.type === 'BUTTONS') as any;
+    if (btnGroup?.buttons && Array.isArray(btnGroup.buttons)) {
+      btnGroup.buttons.forEach((btn: any, idx: number) => {
+        payloadComponents.push({
+          type: 'button' as const,
+          sub_type: btn.type.toLowerCase(),  // e.g. 'catalog'
+          index: idx.toString()              // "0", "1", ...
+        });
+      });
+    }
+
+    // 4) Send
     fetch(`${baseUrl}/templateMessage/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         to: chatCtx.activeChat?.participantId,
-        type: 'template',
+        type: 'template' as const,
         templateName: selectedTemplate.template_name,
         languageCode: selectedTemplate.lang_code,
-        components,
+        components: payloadComponents
       }),
-    }).then(() => {
-      setShowTemplateModal(false);
-      setSelectedTemplate(null);
-      setVarInputs({});
-    }).catch(console.error);
+    })
+      .then(() => {
+        setShowTemplateModal(false);
+        setSelectedTemplate(null);
+        setVarInputs({});
+      })
+      .catch(console.error);
   };
 
   const onSelectImage = (event: any) => {
