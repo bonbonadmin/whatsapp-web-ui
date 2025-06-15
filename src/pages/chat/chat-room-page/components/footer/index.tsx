@@ -23,6 +23,7 @@ import Grid from "@mui/material/Grid"; // make sure to import
 interface WhatsappComponent {
   text: string;
   type: string;
+  buttons?: any[]; //NEW: include buttons array in type
   example?: Record<string, any>;
 }
 interface WhatsappTemplate {
@@ -66,6 +67,7 @@ export default function Footer() {
   const [templates, setTemplates] = useState<WhatsappTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [varInputs, setVarInputs] = useState<Record<string, string>>({});
+  const [buttonInputs, setButtonInputs] = useState<{ thumbnail_product_retailer_id: string; title: string; product_items: string }>({ thumbnail_product_retailer_id: '', title: '', product_items: '' });
 
   const hiddenUploadImage = React.useRef<HTMLInputElement>(null);
   const hiddenUploadDoc = React.useRef<HTMLInputElement>(null);
@@ -128,6 +130,10 @@ export default function Footer() {
     unique.forEach(idx => { initInputs[idx] = ""; });
 
     setVarInputs(initInputs);
+    const btnGroup = comps.find(c => c.type === 'BUTTONS' && c.buttons?.some(b => b.type.toLowerCase() === 'mpm')); //NEW
+    if (btnGroup) {
+      setButtonInputs({ thumbnail_product_retailer_id: '', title: '', product_items: '' }); //NEW
+    }
   };
 
   const handleSendTemplate = () => {
@@ -145,22 +151,28 @@ export default function Footer() {
     // 2) Start with any BODY component
     const payloadComponents: any[] = [];
     if (params.length > 0) {
-      payloadComponents.push({
-        type: 'body' as const,
-        parameters: params
-      });
+      payloadComponents.push({ type: 'body' as const, parameters: params });
     }
-
-    // 3) Append any BUTTONS components
+    // only MPM-type buttons
     const btnGroup = comps.find(c => c.type === 'BUTTONS') as any;
-    if (btnGroup?.buttons && Array.isArray(btnGroup.buttons)) {
-      btnGroup.buttons.forEach((btn: any, idx: number) => {
-        payloadComponents.push({
-          type: 'button' as const,
-          sub_type: btn.type.toLowerCase(),  // e.g. 'catalog'
-          index: idx.toString()              // "0", "1", ...
+    if (btnGroup?.buttons) {
+      btnGroup.buttons
+        .filter((btn: any) => btn.type.toLowerCase() === 'mpm') //NEW
+        .forEach((btn: any, idx: number) => {
+          const items = buttonInputs.product_items.split(',').map(code => ({ product_retailer_id: code.trim() })); //NEW
+          payloadComponents.push({
+            type: 'button' as const,
+            sub_type: 'mpm', //NEW
+            index: idx, //NEW
+            parameters: [{
+              type: 'action' as const,
+              action: {
+                thumbnail_product_retailer_id: buttonInputs.thumbnail_product_retailer_id, //NEW
+                sections: [{ title: buttonInputs.title, product_items: items }] //NEW
+              }
+            }]
+          });
         });
-      });
     }
 
     // 4) Send
@@ -296,7 +308,11 @@ export default function Footer() {
       {/* Templates Modal */}
       <Modal
         open={showTemplateModal}
-        onClose={() => setShowTemplateModal(false)}
+        onClose={() => {
+          setShowTemplateModal(false);
+          setSelectedTemplate(null);
+          setVarInputs({});
+        }}
         aria-labelledby="template-modal-title"
         aria-describedby="template-modal-description"
       >
@@ -306,27 +322,30 @@ export default function Footer() {
             color: "#fff",
             display: "flex",
             flexDirection: "column",
-            maxHeight: "80vh",    // keep it from overflowing the screen
+            maxHeight: "80vh",
             width: 700,
           }}
         >
-          {/* 1) Template List */}
           {!selectedTemplate ? (
+            // 1) Template List
             <>
               <Typography variant="h6" sx={{ mb: 2 }}>
                 Select a Template
               </Typography>
 
               <Box sx={{ flex: 1, overflowY: "auto" }}>
-                {/* optional header row */}
                 <Grid container spacing={2} sx={{ fontWeight: "bold", mb: 1 }}>
-                  <Grid item xs={4}>Name</Grid>
-                  <Grid item xs={8}>Text</Grid>
+                  <Grid item xs={4} sx={{ color: "#fff" }}>
+                    Name
+                  </Grid>
+                  <Grid item xs={8} sx={{ color: "#fff" }}>
+                    Text
+                  </Grid>
                 </Grid>
 
-                {templates.map((t) => {
+                {templates.map(t => {
                   const bodyText =
-                    t.all_component?.find((c: any) => c.type === "BODY")?.text || "";
+                    t.all_component?.find(c => c.type === "BODY")?.text || "";
                   return (
                     <Grid
                       container
@@ -361,27 +380,20 @@ export default function Footer() {
               </Box>
             </>
           ) : (
-            /* 2) Variable-Fill UI */
+            // 2) Variable‐Fill + MPM Inputs
             <Box sx={{ display: "flex", flexDirection: "column", flex: 1 }}>
               <Typography variant="h6" sx={{ mb: 2 }}>
                 Fill Template Variables
               </Typography>
               <Typography
                 variant="body2"
-                sx={{
-                  whiteSpace: "pre-wrap",
-                  mb: 2,
-                  color: "#fff",
-                  opacity: 0.8
-                }}
+                sx={{ whiteSpace: "pre-wrap", mb: 2, opacity: 0.8 }}
               >
-                {
-                  // pull the first BODY component or blank
-                  (selectedTemplate.all_component ?? [])
-                    .find((c: any) => c.type === "BODY")
-                    ?.text || ""
-                }
+                {(selectedTemplate.all_component ?? [])
+                  .find(c => c.type === "BODY")
+                  ?.text || ""}
               </Typography>
+
               <Box
                 sx={{
                   flex: 1,
@@ -391,6 +403,7 @@ export default function Footer() {
                   gap: 2,
                 }}
               >
+                {/* Body variable inputs */}
                 {Object.entries(varInputs).map(([idx, val]) => (
                   <Box key={idx} sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                     <Typography sx={{ width: 120, color: "#fff" }}>
@@ -399,13 +412,51 @@ export default function Footer() {
                     <Input
                       placeholder="Enter value"
                       value={val}
-                      onChange={(e) =>
-                        setVarInputs((v) => ({ ...v, [idx]: e.target.value }))
+                      onChange={e =>
+                        setVarInputs(v => ({ ...v, [idx]: e.target.value }))
                       }
                       style={{ background: "transparent", color: "#fff" }}
                     />
                   </Box>
                 ))}
+
+                {/* MPM button action inputs */}
+                {selectedTemplate.all_component
+                  ?.find(c => c.type === "BUTTONS")
+                  ?.buttons?.some(b => b.type.toLowerCase() === "mpm") && (
+                  <Box sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+                    <Typography sx={{ color: "#fff" }}>
+                      MPM Button Action Parameters
+                    </Typography>
+                    <Input
+                      placeholder="Thumbnail Product Retailer ID"
+                      value={buttonInputs.thumbnail_product_retailer_id}
+                      onChange={e =>
+                        setButtonInputs(b => ({
+                          ...b,
+                          thumbnail_product_retailer_id: e.target.value,
+                        }))
+                      }
+                      style={{ background: "transparent", color: "#fff" }}
+                    />
+                    <Input
+                      placeholder="Section Title"
+                      value={buttonInputs.title}
+                      onChange={e =>
+                        setButtonInputs(b => ({ ...b, title: e.target.value }))
+                      }
+                      style={{ background: "transparent", color: "#fff" }}
+                    />
+                    <Input
+                      placeholder="Product Items (comma-separated)"
+                      value={buttonInputs.product_items}
+                      onChange={e =>
+                        setButtonInputs(b => ({ ...b, product_items: e.target.value }))
+                      }
+                      style={{ background: "transparent", color: "#fff" }}
+                    />
+                  </Box>
+                )}
               </Box>
 
               <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>
