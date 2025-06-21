@@ -7,7 +7,7 @@ export const inbox: Inbox[] = [
     image: "/assets/images/boy1.webp",
     lastMessage: "Testing",
     notificationsCount: 5,
-    messageStatus: "SENT",
+    messageStatus: "sent",
     timestamp: "08:21",
     isPinned: true,
     updatedAt: ""
@@ -18,7 +18,7 @@ export const inbox: Inbox[] = [
     image: "/assets/images/boy2.jpeg",
     lastMessage: "Hello there!",
     notificationsCount: 2,
-    messageStatus: "SENT",
+    messageStatus: "sent",
     timestamp: "12:15",
     isPinned: true,
     isOnline: true,
@@ -30,7 +30,7 @@ export const inbox: Inbox[] = [
     image: "/assets/images/boy3.jpeg",
     lastMessage: "How are you?",
     notificationsCount: 0,
-    messageStatus: "READ",
+    messageStatus: "read",
     timestamp: "6:47",
     updatedAt: ""
   },
@@ -39,7 +39,7 @@ export const inbox: Inbox[] = [
     name: "Samantha Lee",
     image: "/assets/images/girl1.jpeg",
     lastMessage: "See you tomorrow!",
-    messageStatus: "SENT",
+    messageStatus: "sent",
     timestamp: "09:35",
     updatedAt: ""
   },
@@ -48,7 +48,7 @@ export const inbox: Inbox[] = [
     name: "William Chen",
     image: "/assets/images/boy4.jpeg",
     lastMessage: "Thanks for your help!",
-    messageStatus: "DELIVERED",
+    messageStatus: "delivered",
     timestamp: "5:22",
     updatedAt: ""
   },
@@ -57,7 +57,7 @@ export const inbox: Inbox[] = [
     name: "Emily Kim",
     image: "/assets/images/girl2.jpeg",
     lastMessage: "Are you free tonight?",
-    messageStatus: "READ",
+    messageStatus: "read",
     timestamp: "4:10",
     isOnline: true,
     updatedAt: ""
@@ -67,7 +67,7 @@ export const inbox: Inbox[] = [
     name: "David Wong",
     image: "/assets/images/boy5.webp",
     lastMessage: "Let's meet at the park!",
-    messageStatus: "SENT",
+    messageStatus: "sent",
     timestamp: "13:48",
     updatedAt: ""
   },
@@ -76,7 +76,7 @@ export const inbox: Inbox[] = [
     name: "Karen Lee",
     image: "/assets/images/girl.jpeg",
     lastMessage: "I'll be there in 10 minutes.",
-    messageStatus: "DELIVERED",
+    messageStatus: "delivered",
     timestamp: "08:56",
     isOnline: true,
     updatedAt: ""
@@ -86,7 +86,7 @@ export const inbox: Inbox[] = [
     name: "Daniel Lee",
     image: "/assets/images/boy6.webp",
     lastMessage: "Can you send me the file?",
-    messageStatus: "READ",
+    messageStatus: "read",
     timestamp: "19:03",
     updatedAt: ""
   },

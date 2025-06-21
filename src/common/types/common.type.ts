@@ -1,4 +1,4 @@
-export type MessageStatus = "READ" | "DELIVERED" | "SENT";
+export type MessageStatus = "failed" | "delivered" | "sent" | 'read';
 
 export type Inbox = {
   id: string;
@@ -8,7 +8,7 @@ export type Inbox = {
   participantId?: string;
   lastMessage?: string;
   timestamp?: string;
-  messageStatus?: MessageStatus;
+  messageStatus?: string;
   notificationsCount?: number;
   isPinned?: boolean;
   isOnline?: boolean;

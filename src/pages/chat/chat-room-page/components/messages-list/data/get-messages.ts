@@ -6,7 +6,7 @@ export type Message = {
   body: string;
   date: string;
   timestamp: string;
-  messageStatus: MessageStatus;
+  messageStatus: string;
   isOpponent: boolean;
   messageType?: string;
   mediaLocation?: string;
@@ -22,6 +22,7 @@ export type MessageResponse = {
   message_type: string;
   media_location: string;
   message_status: number;
+  participant_message_status: string;
   display_phone_number: string;
   created_at: Date;
 };

@@ -40,6 +40,8 @@ const attachButtons = [
   // { icon: "attachCamera", label: "Use camera" },
   { icon: "attachImage", label: "Choose image", type: "img" },
   { icon: "attachContacts", label: "Templates", type: "templates" },
+  { icon: "attachRooms", label: "Manual Webhook", type: "webhook" },
+  { icon: "attachCamera", label: "Manual AI", type: "ai" },
 ];
 
 const modalStyle = {
@@ -73,6 +75,10 @@ export default function Footer() {
     product_items: string;
   }>({ thumbnail_product_retailer_id: "", title: "", product_items: "" });
   const [urlInputs, setUrlInputs] = useState<Record<string, string>>({});
+  const [showWebhookModal, setShowWebhookModal] = useState(false);
+  const [webhookMessage, setWebhookMessage] = useState("");
+  const [showAIModal, setShowAIModal] = useState(false);
+  const [aiMessage, setAiMessage] = useState("");
 
   const hiddenUploadImage = React.useRef<HTMLInputElement>(null);
   const hiddenUploadDoc = React.useRef<HTMLInputElement>(null);
@@ -224,6 +230,40 @@ export default function Footer() {
       .catch(console.error);
   };
 
+  const sendWebhook = () => {
+    if (!chatCtx.activeChat) return;
+    fetch(`${baseUrl}/message/manual-webhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phoneNumber: chatCtx.activeChat.participantId,
+        textMessage: webhookMessage,
+      }),
+    })
+      .then(() => {
+        setShowWebhookModal(false);
+        setWebhookMessage("");
+      })
+      .catch(console.error);
+  };
+
+  const sendAI = () => {
+    if (!chatCtx.activeChat) return;
+    fetch(`${baseUrl}/message/add-thread-message`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phoneNumber: chatCtx.activeChat.participantId,
+        textMessage: aiMessage,
+      }),
+    })
+      .then(() => {
+        setShowAIModal(false);
+        setAiMessage("");
+      })
+      .catch(console.error);
+  };
+
   const onSelectImage = (event: any) => {
     const selectedImage = event.target.files[0];
     if (selectedImage) {
@@ -246,7 +286,12 @@ export default function Footer() {
       case "templates":
         setShowTemplateModal(true);
         break;
-
+      case "webhook":
+        setShowWebhookModal(true);
+        break;
+      case "ai":
+        setShowAIModal(true);
+        break;
       default:
         break;
     }
@@ -333,6 +378,78 @@ export default function Footer() {
           <Icon id="send" className="icon" />
         </SendMessageButton>
       </ControlsWrapper>
+
+      {/* Manual Webhook Modal */}
+      <Modal
+        open={showWebhookModal}
+        onClose={() => {
+          setShowWebhookModal(false);
+          setWebhookMessage("");
+        }}
+      >
+        <Box
+          sx={{
+            ...modalStyle,
+            width: 500,
+            bgcolor: "#323739",
+            color: "#fff",
+            p: 3,
+            borderRadius: 2,
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+          }}
+        >
+          <Typography variant="h6">Manual Webhook</Typography>
+          <TextArea
+            value={webhookMessage}
+            placeholder="Type your webhook payload here…"
+            onChange={e => setWebhookMessage(e.target.value)}
+            style={{ minHeight: "120px", color: "#fff" }}
+          />
+          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+            <SendMessageButton onClick={sendWebhook}>
+              <Icon id="send" />
+            </SendMessageButton>
+          </Box>
+        </Box>
+      </Modal>
+
+      {/* Manual AI Modal */}
+      <Modal
+        open={showAIModal}
+        onClose={() => {
+          setShowAIModal(false);
+          setAiMessage("");
+        }}
+      >
+        <Box
+          sx={{
+            ...modalStyle,
+            width: 500,
+            bgcolor: "#323739",
+            color: "#fff",
+            p: 3,
+            borderRadius: 2,
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+          }}
+        >
+          <Typography variant="h6">Manual AI</Typography>
+          <TextArea
+            value={aiMessage}
+            placeholder="Type your AI prompt here…"
+            onChange={e => setAiMessage(e.target.value)}
+            style={{ minHeight: "120px", color: "#fff" }}
+          />
+          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+            <SendMessageButton onClick={sendAI}>
+              <Icon id="send" />
+            </SendMessageButton>
+          </Box>
+        </Box>
+      </Modal>
 
       {/* Templates Modal */}
       <Modal
