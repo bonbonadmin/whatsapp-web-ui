@@ -172,7 +172,7 @@ const SingleMessage = forwardRef((props: { message: Message, isHighlighted?: boo
             <Icon
               id={
                 message.messageStatus === 'failed'
-                  ? 'lock'
+                  ? 'cross'
                   : (message.messageStatus === 'delivered' || message.messageStatus === 'read')
                     ? 'doubleTick'
                     : 'singleTick'

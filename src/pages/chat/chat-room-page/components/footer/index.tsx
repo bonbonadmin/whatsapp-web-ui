@@ -39,9 +39,9 @@ const attachButtons = [
   { icon: "attachDocument", label: "Choose document", type: "doc" },
   // { icon: "attachCamera", label: "Use camera" },
   { icon: "attachImage", label: "Choose image", type: "img" },
-  { icon: "attachContacts", label: "Templates", type: "templates" },
-  { icon: "attachRooms", label: "Manual Webhook", type: "webhook" },
-  { icon: "attachCamera", label: "Manual AI", type: "ai" },
+  { icon: "attachTemplate", label: "Templates", type: "templates" },
+  { icon: "manualWebhook", label: "Manual Webhook", type: "webhook" },
+  { icon: "manualAI", label: "Manual AI", type: "ai" },
 ];
 
 const modalStyle = {
