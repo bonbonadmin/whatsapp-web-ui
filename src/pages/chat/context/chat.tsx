@@ -164,7 +164,7 @@ export default function ChatProvider(props: { children: any }) {
                   body: value.message_text,
                   date: new Date(value.created_at).toLocaleDateString(),
                   timestamp: timeStamp,
-                  messageStatus: value.message_status === 1 ? "READ" : "DELIVERED",
+                  messageStatus: value.participant_message_status,
                   isOpponent: value.from_me === 0 ? true : false,
                   messageType: value.message_type,
                   mediaLocation: value.media_location

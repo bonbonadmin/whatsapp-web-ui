@@ -107,9 +107,33 @@ const SingleMessage = forwardRef((props: { message: Message, isHighlighted?: boo
         className={message.isOpponent ? "chat__msg--received" : "chat__msg--sent"}
         ref={ref}
         style={{
+          position: "relative",
           border: isHighlighted ? "1px solid #FFD700" : "none",
+          paddingLeft: message.messageType === "template" ? "30px" : undefined,
         }}
       >
+        {message.messageType === "template" && (
+          <div
+            style={{
+              position: "absolute",           // 2️⃣ absolutely position the badge
+              left: 4,
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: 20,
+              height: 20,
+              backgroundColor: "#eee",
+              borderRadius: 4,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 12,
+              fontWeight: "bold",
+              color: "#333",
+            }}
+          >
+            T
+          </div>
+        )}
         {message.messageType === "image" ? (
           <div>
             <img
@@ -146,10 +170,15 @@ const SingleMessage = forwardRef((props: { message: Message, isHighlighted?: boo
           <span>{message.timestamp}</span>
           {!message.isOpponent && (
             <Icon
-              id={`${message.messageStatus === "SENT" ? "singleTick" : "doubleTick"}`}
-              className={`chat__msg-status-icon ${
-                message.messageStatus === "READ" ? "chat__msg-status-icon--blue" : ""
-              }`}
+              id={
+                message.messageStatus === 'failed'
+                  ? 'cross'
+                  : (message.messageStatus === 'delivered' || message.messageStatus === 'read')
+                    ? 'doubleTick'
+                    : 'singleTick'
+              }
+              className={`chat__msg-status-icon ${message.messageStatus === 'read' ? 'chat__msg-status-icon--blue' : ''
+                }`}
             />
           )}
         </ChatMessageFooter>

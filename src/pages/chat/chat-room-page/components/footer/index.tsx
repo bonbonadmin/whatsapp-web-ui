@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import Icon from "common/components/icons";
 import {
   AttachButton,
@@ -18,6 +18,20 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Modal from "@mui/material/Modal";
 import Checkbox from "@mui/material/Checkbox";
+import Grid from "@mui/material/Grid"; // make sure to import
+
+interface WhatsappComponent {
+  text: string;
+  type: string;
+  buttons?: any[]; 
+  example?: Record<string, any>;
+}
+interface WhatsappTemplate {
+  id: number;
+  template_name: string;
+  all_component: WhatsappComponent[];
+  lang_code: string;
+}
 
 const attachButtons = [
   // { icon: "attachRooms", label: "Choose room" },
@@ -25,6 +39,9 @@ const attachButtons = [
   { icon: "attachDocument", label: "Choose document", type: "doc" },
   // { icon: "attachCamera", label: "Use camera" },
   { icon: "attachImage", label: "Choose image", type: "img" },
+  { icon: "attachTemplate", label: "Templates", type: "templates" },
+  { icon: "manualWebhook", label: "Manual Webhook", type: "webhook" },
+  { icon: "manualAI", label: "Manual AI", type: "ai" },
 ];
 
 const modalStyle = {
@@ -48,10 +65,36 @@ export default function Footer() {
   const [uploadType, setUploadType] = useState("image");
   const [nonManual, setNonManual] = useState(false);
 
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [templates, setTemplates] = useState<WhatsappTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const [varInputs, setVarInputs] = useState<Record<string, string>>({});
+  const [buttonInputs, setButtonInputs] = useState<{
+    thumbnail_product_retailer_id: string;
+    title: string;
+    product_items: string;
+  }>({ thumbnail_product_retailer_id: "", title: "", product_items: "" });
+  const [urlInputs, setUrlInputs] = useState<Record<string, string>>({});
+  const [showWebhookModal, setShowWebhookModal] = useState(false);
+  const [webhookMessage, setWebhookMessage] = useState("");
+  const [showAIModal, setShowAIModal] = useState(false);
+  const [aiMessage, setAiMessage] = useState("");
+
   const hiddenUploadImage = React.useRef<HTMLInputElement>(null);
   const hiddenUploadDoc = React.useRef<HTMLInputElement>(null);
 
   const chatCtx = useChatContext();
+  const baseUrl = process.env.REACT_APP_API_URL;
+
+  // fetch templates when modal opens
+  useEffect(() => {
+    if (showTemplateModal) {
+      fetch(`${baseUrl}/template`)
+        .then(res => res.json())
+        .then(json => setTemplates(json.data || []))
+        .catch(console.error);
+    }
+  }, [showTemplateModal, baseUrl]);
 
   const submitMessage = () => {
     if (open && fileUpload) {
@@ -69,6 +112,156 @@ export default function Footer() {
       chatCtx.onSendMessage(newMsg);
       setMessageValue("");
     }
+  };
+
+  const handleSelectTemplate = (template: WhatsappTemplate) => {
+    // Store the selected template immediately
+    setSelectedTemplate(template);
+
+    // Always treat all_component as an array
+    const comps: WhatsappComponent[] = template.all_component ?? [];
+
+    // For each BODY component, pull out all {{n}} matches
+    const indices = comps
+      .filter(c => c.type === 'BODY')
+      .flatMap(c => {
+        // Force the iterator to a typed array
+        const matches = Array.from(
+          c.text.matchAll(/\{\{(\d+)\}\}/g) as IterableIterator<RegExpMatchArray>
+        );
+        // Map each RegExpMatchArray to its first capture group
+        return matches.map(match => match[1]);
+      });
+
+    // Dedupe
+    const unique = Array.from(new Set(indices));
+
+    // Initialize an empty string for each variable index
+    const initInputs: Record<string, string> = {};
+    unique.forEach(idx => { initInputs[idx] = ""; });
+
+    setVarInputs(initInputs);
+
+    //MPM vars init
+    const btnGroup = comps.find(c => c.type === 'BUTTONS' && c.buttons?.some(b => b.type.toLowerCase() === 'mpm')); //NEW
+    if (btnGroup) {
+      setButtonInputs({ thumbnail_product_retailer_id: '', title: '', product_items: '' }); //NEW
+    }
+
+    // URL vars init       
+    const urlGroup = comps.find(c => c.type==="BUTTONS")
+      ?.buttons?.find(b => b.type.toLowerCase()==="url");
+    if (urlGroup?.url) {
+      const vars = Array.from(
+        (urlGroup.url.matchAll(/\{\{(\d+)\}\}/g) as IterableIterator<RegExpMatchArray>),
+        m => m[1]
+      );
+      setUrlInputs(Object.fromEntries(Array.from(new Set(vars)).map(i=>[i,""])));
+    } else {
+      setUrlInputs({});  
+    }
+  };
+
+  const handleSendTemplate = () => {
+    if (!selectedTemplate) return;
+
+    // Always treat all_component as an array
+    const comps: WhatsappComponent[] = selectedTemplate.all_component ?? [];
+
+    // 1) BODY
+    const params = Object.entries(varInputs).map(([k,v]) => ({
+      type:"text" as const, text:v
+    }));
+    const payload: any[] = [];
+    if (params.length) payload.push({ type:"body" as const, parameters:params });
+
+    // 2) BUTTONS → MPM, catalog, flow, url
+    const btns = comps.find(c => c.type === "BUTTONS")?.buttons || [];
+    btns.forEach((b: any, i: number) => {
+      const subtype = b.type.toLowerCase();
+      // MPM(1) & URL(4) need parameters
+      if (subtype === "mpm") {
+        const items = buttonInputs.product_items
+          .split(",").map(c => ({ product_retailer_id: c.trim() }));
+        payload.push({
+          type: "button" as const,
+          sub_type: "mpm", index: i,
+          parameters: [{
+            type: "action" as const,
+            action: {
+              thumbnail_product_retailer_id: buttonInputs.thumbnail_product_retailer_id,
+              sections: [{ title: buttonInputs.title, product_items: items }]
+            }
+          }]
+        });
+      } else if (subtype === "url") {
+        // if urlInputs empty → no params
+        const urlParams = Object.entries(urlInputs).map(([k, v]) => ({
+          type: "text" as const, text: v
+        }));  //NEW
+        payload.push({
+          type: "button" as const,
+          sub_type: "url", index: i,
+          ...(urlParams.length ? { parameters: urlParams } : {}),
+        });
+      } else if (subtype === "catalog" || subtype === "flow") {
+        payload.push({ type: "button" as const, sub_type: subtype, index: i });
+      }
+    });
+
+    // send
+    fetch(`${baseUrl}/templateMessage/send`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: chatCtx.activeChat?.participantId,
+        type: "template" as const,
+        templateName: selectedTemplate.template_name,
+        languageCode: selectedTemplate.lang_code,
+        components: payload
+      })
+    })
+      .then(() => {
+        setShowTemplateModal(false);
+        setSelectedTemplate(null);
+        setVarInputs({});
+        setButtonInputs({ thumbnail_product_retailer_id:"", title:"", product_items:"" });
+        setUrlInputs({});  
+      })
+      .catch(console.error);
+  };
+
+  const sendWebhook = () => {
+    if (!chatCtx.activeChat) return;
+    fetch(`${baseUrl}/message/manual-webhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phoneNumber: chatCtx.activeChat.participantId,
+        textMessage: webhookMessage,
+      }),
+    })
+      .then(() => {
+        setShowWebhookModal(false);
+        setWebhookMessage("");
+      })
+      .catch(console.error);
+  };
+
+  const sendAI = () => {
+    if (!chatCtx.activeChat) return;
+    fetch(`${baseUrl}/message/add-thread-message`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phoneNumber: chatCtx.activeChat.participantId,
+        textMessage: aiMessage,
+      }),
+    })
+      .then(() => {
+        setShowAIModal(false);
+        setAiMessage("");
+      })
+      .catch(console.error);
   };
 
   const onSelectImage = (event: any) => {
@@ -90,7 +283,15 @@ export default function Footer() {
         setUploadType("document");
         hiddenUploadDoc.current?.click();
         break;
-
+      case "templates":
+        setShowTemplateModal(true);
+        break;
+      case "webhook":
+        setShowWebhookModal(true);
+        break;
+      case "ai":
+        setShowAIModal(true);
+        break;
       default:
         break;
     }
@@ -174,10 +375,190 @@ export default function Footer() {
           inputProps={{ "aria-label": "non manual" }}
         />
         <SendMessageButton onClick={submitMessage}>
-          <Icon id="send" className="icon"/>
+          <Icon id="send" className="icon" />
         </SendMessageButton>
       </ControlsWrapper>
 
+      {/* Manual Webhook Modal */}
+      <Modal
+        open={showWebhookModal}
+        onClose={() => {
+          setShowWebhookModal(false);
+          setWebhookMessage("");
+        }}
+      >
+        <Box
+          sx={{
+            ...modalStyle,
+            width: 500,
+            bgcolor: "#323739",
+            color: "#fff",
+            p: 3,
+            borderRadius: 2,
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+          }}
+        >
+          <Typography variant="h6">Manual Webhook</Typography>
+          <TextArea
+            value={webhookMessage}
+            placeholder="Type your webhook payload here…"
+            onChange={e => setWebhookMessage(e.target.value)}
+            style={{ minHeight: "120px", color: "#fff" }}
+          />
+          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+            <SendMessageButton onClick={sendWebhook}>
+              <Icon id="send" />
+            </SendMessageButton>
+          </Box>
+        </Box>
+      </Modal>
+
+      {/* Manual AI Modal */}
+      <Modal
+        open={showAIModal}
+        onClose={() => {
+          setShowAIModal(false);
+          setAiMessage("");
+        }}
+      >
+        <Box
+          sx={{
+            ...modalStyle,
+            width: 500,
+            bgcolor: "#323739",
+            color: "#fff",
+            p: 3,
+            borderRadius: 2,
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+          }}
+        >
+          <Typography variant="h6">Manual AI</Typography>
+          <TextArea
+            value={aiMessage}
+            placeholder="Type your AI prompt here…"
+            onChange={e => setAiMessage(e.target.value)}
+            style={{ minHeight: "120px", color: "#fff" }}
+          />
+          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+            <SendMessageButton onClick={sendAI}>
+              <Icon id="send" />
+            </SendMessageButton>
+          </Box>
+        </Box>
+      </Modal>
+
+      {/* Templates Modal */}
+      <Modal
+        open={showTemplateModal}
+        onClose={()=>{
+          setShowTemplateModal(false);
+          setSelectedTemplate(null);
+          setVarInputs({});
+          setButtonInputs({ thumbnail_product_retailer_id:"", title:"", product_items:"" }); //NEW
+          setUrlInputs({});                                                               //NEW
+        }}
+      >
+        <Box sx={{ ...modalStyle, color:"#fff", display:"flex", flexDirection:"column", maxHeight:"80vh", width:700 }}>
+          {!selectedTemplate ? (
+            <>
+              <Typography variant="h6" sx={{ mb:2 }}>Select a Template</Typography>
+              <Box sx={{ flex:1, overflowY:"auto" }}>
+                <Grid container spacing={2} sx={{ fontWeight:"bold", mb:1 }}>
+                  <Grid item xs={4} sx={{ color:"#fff" }}>Name</Grid>
+                  <Grid item xs={8} sx={{ color:"#fff" }}>Text</Grid>
+                </Grid>
+                {templates.map(t=>{
+                  const txt = t.all_component?.find(c=>c.type==="BODY")?.text||"";
+                  return (
+                    <Grid
+                      container spacing={2} key={t.id}
+                      onClick={()=>handleSelectTemplate(t)}
+                      sx={{ cursor:"pointer", py:1, "&:hover":{ backgroundColor:"action.hover" } }}
+                    >
+                      <Grid item xs={4} sx={{ color:"#fff" }}>{t.template_name}</Grid>
+                      <Grid item xs={8} sx={{ whiteSpace:"pre-wrap", typography:"body2", color:"#fff" }}>{txt}</Grid>
+                    </Grid>
+                  );
+                })}
+                {templates.length===0 && <Box sx={{ textAlign:"center", py:2, color:"#fff" }}>No templates available.</Box>}
+              </Box>
+            </>
+          ) : (
+            <Box sx={{ display:"flex", flexDirection:"column", flex:1 }}>
+              <Typography variant="h6" sx={{ mb:2 }}>Fill Template Variables</Typography>
+              <Typography variant="body2" sx={{ whiteSpace:"pre-wrap", mb:2, opacity:0.8 }}>
+                { (selectedTemplate.all_component?.find(c=>c.type==="BODY")?.text)||"" }
+              </Typography>
+
+              <Box sx={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:2 }}>
+                {/* BODY inputs */}
+                {Object.entries(varInputs).map(([i,v])=>(
+                  <Box key={i} sx={{ display:"flex", alignItems:"center", gap:2 }}>
+                    <Typography sx={{ width:120, color:"#fff" }}>{'{{'+i+'}}'}</Typography>
+                    <Input
+                      placeholder="Enter value"
+                      value={v}
+                      onChange={e=>setVarInputs(old=>({...old,[i]:e.target.value}))}
+                      style={{ background:"transparent", color:"#fff" }}
+                    />
+                  </Box>
+                ))}
+
+                {/* MPM inputs */}
+                {selectedTemplate.all_component?.find(c=>c.type==="BUTTONS")?.buttons?.some(b=>b.type.toLowerCase()==="mpm") && (
+                  <>
+                    <Typography sx={{ color:"#fff", mt:2 }}>MPM Button Action Parameters</Typography>
+                    <Input
+                      placeholder="Thumbnail Product Retailer ID"
+                      value={buttonInputs.thumbnail_product_retailer_id}
+                      onChange={e=>setButtonInputs(b=>({...b,thumbnail_product_retailer_id:e.target.value}))}
+                      style={{ background:"transparent", color:"#fff" }}
+                    />
+                    <Input
+                      placeholder="Section Title"
+                      value={buttonInputs.title}
+                      onChange={e=>setButtonInputs(b=>({...b,title:e.target.value}))}
+                      style={{ background:"transparent", color:"#fff" }}
+                    />
+                    <Input
+                      placeholder="Product Items (comma-separated)"
+                      value={buttonInputs.product_items}
+                      onChange={e=>setButtonInputs(b=>({...b,product_items:e.target.value}))}
+                      style={{ background:"transparent", color:"#fff" }}
+                    />
+                  </>
+                )}
+
+                {/* URL inputs */}
+                {selectedTemplate.all_component?.find(c=>c.type==="BUTTONS")?.buttons?.some(b=>b.type.toLowerCase()==="url") && (
+                  <>
+                    <Typography sx={{ color:"#fff", mt:2 }}>URL Button Parameters</Typography>
+                    {Object.entries(urlInputs).map(([i,v])=>(
+                      <Box key={i} sx={{ display:"flex", alignItems:"center", gap:2 }}>
+                        <Typography sx={{ width:120, color:"#fff" }}>{'{{'+i+'}}'}</Typography>
+                        <Input
+                          placeholder="Enter value"
+                          value={v}
+                          onChange={e=>setUrlInputs(old=>({...old,[i]:e.target.value}))}
+                          style={{ background:"transparent", color:"#fff" }}
+                        />
+                      </Box>
+                    ))}
+                  </>
+                )}
+              </Box>
+
+              <Box sx={{ mt:3, display:"flex", justifyContent:"flex-end" }}>
+                <SendMessageButton onClick={handleSendTemplate}><Icon id="send"/></SendMessageButton>
+              </Box>
+            </Box>
+          )}
+        </Box>
+      </Modal>
 
       <Modal
         open={open}
