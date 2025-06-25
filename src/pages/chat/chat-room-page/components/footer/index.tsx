@@ -462,7 +462,7 @@ export default function Footer() {
           setUrlInputs({});                                                               //NEW
         }}
       >
-        <Box sx={{ ...modalStyle, color:"#fff", display:"flex", flexDirection:"column", maxHeight:"80vh", width:700 }}>
+        <Box sx={{ ...modalStyle, color:"#fff", display:"flex", flexDirection:"column", maxHeight:"80vh", overflowY: "auto", width:700 }}>
           {!selectedTemplate ? (
             <>
               <Typography variant="h6" sx={{ mb:2 }}>Select a Template</Typography>
