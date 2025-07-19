@@ -553,6 +553,20 @@ const icons = {
       ></path>
     </Svg>
   ),
+  logout: (props) => (
+    <Svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      {...props}
+    >
+      <path
+        fill="currentColor"
+        d="M4 3h8v18H4V3zM16 12l-6-6v4H8v4h2v4l6-6z"
+      />
+    </Svg>
+  ),
   cross: (props) => (
     <Svg
       width="12px"
