@@ -43,6 +43,11 @@ export default function ChatRoomPage() {
   //   }
   // // eslint-disable-next-line react-hooks/exhaustive-deps
   // }, [chatCtx.firstOpenChat])
+  useEffect(() => {
+    if (!isSearchOpen) {
+      setSelectedSearchId("");
+    }
+  }, [isSearchOpen]);
 
   const [selectedSearchId, setSelectedSearchId] = useState<string>("");
 
@@ -50,14 +55,53 @@ export default function ChatRoomPage() {
     setSelectedSearchId(id);
   };
 
+  if (participantMessages.length === 0) {
+    return (
+      <ChatLayout>
+        <Container>
+          <Body>
+            <Background />
+            <Header
+              title={activeInbox?.name ?? ""}
+              image={activeInbox?.image ?? ""}
+              subTitle={activeInbox?.isOnline ? "Online" : ""}
+              onSearchClick={() => handleMenuOpen("search")}
+              onProfileClick={() => handleMenuOpen("profile")}
+            />
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <p>No messages</p>
+            </div>
+            <FooterContainer>
+              <Footer />
+            </FooterContainer>
+          </Body>
+
+          <Sidebar title="Search" isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)}>
+            <SearchSection onClickSearch={handleClickSearch} isSearchActive={isSearchOpen} />
+          </Sidebar>
+          <Sidebar
+            title="Contact Info"
+            isOpen={isProfileOpen}
+            onClose={() => setIsProfileOpen(false)}
+          >
+            <ProfileSection
+              name={activeInbox?.name ?? ""}
+              image={activeInbox?.image ?? ""}
+              phoneNumber={activeInbox?.participantId ?? ""}
+            />
+          </Sidebar>
+        </Container>
+      </ChatLayout>
+    );
+  }
   const lastMessage = participantMessages[participantMessages.length - 1].id;
-
-  useEffect(() => {
-    if (!isSearchOpen) {
-      setSelectedSearchId("");
-    }
-  }, [isSearchOpen]);
-
   return (
     <ChatLayout>
       <Container>

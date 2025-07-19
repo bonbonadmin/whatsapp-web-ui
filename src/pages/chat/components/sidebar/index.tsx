@@ -43,6 +43,12 @@ export default function Sidebar() {
     navigate("/" + chat.participantId);
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userEmail');
+    navigate('/login', { replace: true });
+  };
+
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateMessage, setUpdateMessage] = useState("");
   const baseUrl = process.env.REACT_APP_API_URL;
@@ -69,6 +75,13 @@ export default function Sidebar() {
       <Header>
         <ImageWrapper>{/* <Avatar src="/assets/images/profile.png" /> */}</ImageWrapper>
         <Actions>
+          <button
+            aria-label="Logout"
+            onClick={handleLogout}
+            style={{ background: "none", border: "none", cursor: "pointer" }}
+          >
+            <Icon id="logout" className="icon" />
+          </button>
           <button
             aria-label="Update Templates"
             onClick={handleTemplateUpdate}
