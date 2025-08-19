@@ -28,7 +28,7 @@ export default function ChatRoomPage() {
     participantMessages,
   } = useChatRoom();
   useNavigateToChat(activeInbox);
-
+  // console.log("testt", participantMessages);
   const scrollButton = React.useRef<HTMLButtonElement>(null);
 
   const chatCtx = useChatContext();
@@ -95,7 +95,7 @@ export default function ChatRoomPage() {
               name={activeInbox?.name ?? ""}
               image={activeInbox?.image ?? ""}
               phoneNumber={activeInbox?.participantId ?? ""}
-              events={Array.isArray(activeInbox?.bookingEvents) ? activeInbox.bookingEvents : undefined}
+              events={chatCtx.bookingEvents}
             />
           </Sidebar>
         </Container>
@@ -153,7 +153,7 @@ export default function ChatRoomPage() {
             name={activeInbox?.name ?? ""}
             image={activeInbox?.image ?? ""}
             phoneNumber={activeInbox?.participantId ?? ""}
-            events={Array.isArray(activeInbox?.bookingEvents) ? activeInbox.bookingEvents : undefined}
+            events={chatCtx.bookingEvents}
           />
         </Sidebar>
       </Container>

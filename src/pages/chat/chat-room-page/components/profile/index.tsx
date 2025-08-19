@@ -27,11 +27,16 @@ function formatEventDate(iso?: string) {
   if (!iso) return "Unknown date";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "Unknown date";
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(d);
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeZone: "Asia/Jakarta",
+  }).format(d);
 }
 
 export default function ProfileSection(props: ProfileSectionProps) {
   const { name, image, phoneNumber, events  } = props;
+
+  // console.log("Test", phoneNumber);
 
   return (
     <Wrapper>
@@ -65,8 +70,12 @@ export default function ProfileSection(props: ProfileSectionProps) {
             Everyone should learn how to program because it teaches you how to think.
           </AboutItem> */}
           <AboutItem>{phoneNumber}</AboutItem>
+        </ul>
+      </Section>
 
-          {events?.length
+      <Section>
+        <ul>
+            {events?.length
             ? events.map((e, i) => (
               <AboutItem key={`${e.event_name}-${e.started_at}-${i}`}>
                 {e.event_name} — {formatEventDate(e.started_at)}
@@ -74,6 +83,7 @@ export default function ProfileSection(props: ProfileSectionProps) {
             ))
             : null}
         </ul>
+
       </Section>
 
       {/* <ActionSection>

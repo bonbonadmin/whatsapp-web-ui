@@ -17,7 +17,6 @@ export type Inbox = {
   notificationsCount?: number;
   isPinned?: boolean;
   isOnline?: boolean;
-  bookingEvents?: EventSummary[];
 };
 
 export type InboxResponse = {

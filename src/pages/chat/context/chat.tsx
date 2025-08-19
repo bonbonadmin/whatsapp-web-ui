@@ -9,6 +9,8 @@ import {
 } from "../chat-room-page/components/messages-list/data/get-messages";
 import axios from "axios";
 
+type BookingEvent = { event_name: string; started_at: string };
+
 type User = {
   name: string;
   image: string;
@@ -33,6 +35,7 @@ type ChatContextProp = {
   onToggleSearch: (toggle: boolean) => void;
   loadMore: () => void;
   isFetchInbox: boolean;
+  bookingEvents?: BookingEvent[];
 };
 
 const initialValue: ChatContextProp = {
@@ -44,6 +47,7 @@ const initialValue: ChatContextProp = {
   searchResults: [],
   hasMore: true,
   isFetchInbox: false,
+  bookingEvents: undefined,
   onChangeChat() {
     throw new Error();
   },
@@ -84,6 +88,7 @@ export default function ChatProvider(props: { children: any }) {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isFetchInbox, setIsFetchInbox] = useState<boolean>(false);
+  const [bookingEvents, setBookingEvents] = useState<BookingEvent[] | undefined>(undefined);
   const baseURL = process.env.REACT_APP_API_URL;
 
   const activeChatRef = useRef(activeChat);
@@ -142,6 +147,20 @@ export default function ChatProvider(props: { children: any }) {
           .get(`${baseURL}/message-inbox/` + id)
           .then((response) => {
             const newMessages: Message[] = [];
+
+            // --- NEW: extract booking events from the same response ---
+            const raw = Array.isArray(response.data?.bookingEvents)
+              ? response.data.bookingEvents
+              : [];
+            const normalizedEvents: BookingEvent[] = raw
+              .map((e: any) => ({
+                event_name: e.event_name ?? e.booking_event_name,
+                started_at: e.started_at,
+              }))
+              .filter((e: BookingEvent) => e.event_name && e.started_at);
+
+            setBookingEvents(normalizedEvents.length ? normalizedEvents : undefined);
+
             if (response.data.data.length) {
               response.data.data.forEach((value: MessageResponse) => {
                 // const timeStamp =
@@ -403,6 +422,7 @@ export default function ChatProvider(props: { children: any }) {
         searchResults,
         hasMore,
         isFetchInbox,
+        bookingEvents,
         onChangeChat: handleChangeChat,
         onSendMessage: handleSendMessage,
         onUploadFile: handleFileUpload,
