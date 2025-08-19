@@ -1,5 +1,10 @@
 export type MessageStatus = "failed" | "delivered" | "sent" | 'read';
 
+export type EventSummary = {
+  event_name: string;
+  started_at: string; // ISO string
+};
+
 export type Inbox = {
   id: string;
   name: string;
@@ -12,6 +17,7 @@ export type Inbox = {
   notificationsCount?: number;
   isPinned?: boolean;
   isOnline?: boolean;
+  bookingEvents?: EventSummary[];
 };
 
 export type InboxResponse = {

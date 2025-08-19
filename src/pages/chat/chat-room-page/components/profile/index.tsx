@@ -20,10 +20,18 @@ type ProfileSectionProps = {
   name: string;
   image: string;
   phoneNumber: string;
+  events?: { event_name: string; started_at: string }[];
 };
 
+function formatEventDate(iso?: string) {
+  if (!iso) return "Unknown date";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "Unknown date";
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(d);
+}
+
 export default function ProfileSection(props: ProfileSectionProps) {
-  const { name, image, phoneNumber  } = props;
+  const { name, image, phoneNumber, events  } = props;
 
   return (
     <Wrapper>
@@ -57,6 +65,14 @@ export default function ProfileSection(props: ProfileSectionProps) {
             Everyone should learn how to program because it teaches you how to think.
           </AboutItem> */}
           <AboutItem>{phoneNumber}</AboutItem>
+
+          {events?.length
+            ? events.map((e, i) => (
+              <AboutItem key={`${e.event_name}-${e.started_at}-${i}`}>
+                {e.event_name} — {formatEventDate(e.started_at)}
+              </AboutItem>
+            ))
+            : null}
         </ul>
       </Section>
 
