@@ -32,6 +32,10 @@ interface WhatsappTemplate {
   all_component: WhatsappComponent[];
   lang_code: string;
 }
+interface PresetMessage {
+  id: number;
+  message: string;
+}
 
 const attachButtons = [
   // { icon: "attachRooms", label: "Choose room" },
@@ -42,6 +46,7 @@ const attachButtons = [
   { icon: "attachTemplate", label: "Templates", type: "templates" },
   { icon: "manualWebhook", label: "Manual Webhook", type: "webhook" },
   { icon: "manualAI", label: "Manual AI", type: "ai" },
+  { icon: "attachPreset", label: "Preset Messages", type: "preset" },
 ];
 
 const modalStyle = {
@@ -79,6 +84,8 @@ export default function Footer() {
   const [webhookMessage, setWebhookMessage] = useState("");
   const [showAIModal, setShowAIModal] = useState(false);
   const [aiMessage, setAiMessage] = useState("");
+  const [showPresetModal, setShowPresetModal] = useState(false);
+  const [presetMessages, setPresetMessages] = useState<PresetMessage[]>([]);
 
   const hiddenUploadImage = React.useRef<HTMLInputElement>(null);
   const hiddenUploadDoc = React.useRef<HTMLInputElement>(null);
@@ -95,6 +102,15 @@ export default function Footer() {
         .catch(console.error);
     }
   }, [showTemplateModal, baseUrl]);
+
+  useEffect(() => {
+    if (showPresetModal) {
+      fetch(`${baseUrl}/preset-message`)
+        .then((res) => res.json())
+        .then((json) => setPresetMessages(json.data || []))
+        .catch(console.error);
+    }
+  }, [showPresetModal, baseUrl]);
 
   const submitMessage = () => {
     if (open && fileUpload) {
@@ -291,6 +307,9 @@ export default function Footer() {
         break;
       case "ai":
         setShowAIModal(true);
+        break;
+      case "preset":
+        setShowPresetModal(true);
         break;
       default:
         break;
@@ -556,6 +575,63 @@ export default function Footer() {
                 <SendMessageButton onClick={handleSendTemplate}><Icon id="send"/></SendMessageButton>
               </Box>
             </Box>
+          )}
+        </Box>
+      </Modal>
+
+      {/* Preset Messages Modal */}
+      <Modal
+        open={showPresetModal}
+        onClose={() => {
+          setShowPresetModal(false);
+        }}
+      >
+        <Box
+          sx={{
+            ...modalStyle,
+            width: 600,
+            color: "#fff",
+            p: 3,
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+            maxHeight: "70vh",
+            overflowY: "auto",
+          }}
+        >
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            Preset Messages
+          </Typography>
+
+          {presetMessages.length === 0 ? (
+            <Box sx={{ opacity: 0.7, textAlign: "center", py: 2 }}>No preset messages.</Box>
+          ) : (
+            presetMessages.map((pm) => {
+              const preview =
+                pm.message.slice(0, 50) + (pm.message.length > 50 ? "…" : "");
+              return (
+                <Box
+                  key={pm.id}
+                  onClick={() => {
+                    setMessageValue(pm.message); // Populate the text field
+                    setShowPresetModal(false);   // Close so user can edit
+                  }}
+                  sx={{
+                    px: 2,
+                    py: 1.5,
+                    borderRadius: 1,
+                    cursor: "pointer",
+                    "&:hover": { backgroundColor: "action.hover" },
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                  title={pm.message}
+                >
+                  <Typography sx={{ color: "#fff" }}>{preview}</Typography>
+                </Box>
+              );
+            })
           )}
         </Box>
       </Modal>

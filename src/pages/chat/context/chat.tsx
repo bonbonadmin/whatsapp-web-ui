@@ -236,6 +236,8 @@ export default function ChatProvider(props: { children: any }) {
               timestamp: timeStamp,
               messageStatus: value.message_status === 1 ? "READ" : "DELIVERED",
               notificationsCount: value.unread_msg,
+              isPinned: value.is_pinned,
+              pinnedAt: value.pinned_at || null,
               updatedAt: value.updated_at,
             };
             newInbox.push(data);

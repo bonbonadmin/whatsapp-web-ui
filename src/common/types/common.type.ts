@@ -10,12 +10,13 @@ export type Inbox = {
   name: string;
   image: string;
   updatedAt: string;
-  participantId?: string;
+  participantId: string;
   lastMessage?: string;
   timestamp?: string;
   messageStatus?: string;
   notificationsCount?: number;
   isPinned?: boolean;
+  pinnedAt?: string | null;
   isOnline?: boolean;
 };
 
@@ -28,6 +29,8 @@ export type InboxResponse = {
   message_text: string;
   message_status: number;
   display_phone_number: string;
+  is_pinned?: boolean;
+  pinned_at?: string | null;
   created_at: Date;
   updated_at: string;
   unread_msg: number;
