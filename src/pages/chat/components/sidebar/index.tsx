@@ -1,6 +1,6 @@
 // /pages/chat/components/sidebar/index.tsx
-import { useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { BsFillMoonFill, BsMoon } from "react-icons/bs";
 import InfiniteScroll from "react-infinite-scroll-component";
 
@@ -29,14 +29,44 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 
+// ------------------------------
+// Helpers (normalize + safe parse)
+// ------------------------------
+const normBool = (v: any): boolean =>
+  v === true || v === 1 || v === "1" || v === "true";
+
+const toMillis = (v?: string | null): number => {
+  if (!v) return 0;
+  let s = String(v).trim();
+
+  // Space -> 'T'
+  if (s.includes(" ")) s = s.replace(" ", "T");
+
+  // Normalize timezone:
+  //  +0700 -> +07:00
+  s = s.replace(/([+-]\d{2})(\d{2})$/, "$1:$2");
+  //  +07 -> +07:00
+  s = s.replace(/([+-]\d{2})$/, "$1:00");
+  //  +00 or +00:00 -> Z
+  s = s.replace(/\+00:00$/, "Z").replace(/\+00$/, "Z");
+
+  const t = Date.parse(s);
+  return Number.isNaN(t) ? 0 : t;
+};
+
+const pick = <T,>(obj: any, keys: string[], fallback?: T): T | undefined =>
+  keys.reduce<any>((acc, k) => (acc !== undefined ? acc : obj?.[k]), undefined) ??
+  fallback;
+
+// ------------------------------
+// Component
+// ------------------------------
 export default function Sidebar() {
   const theme = useAppTheme();
   const navigate = useNavigate();
   const chatCtx = useChatContext();
 
-  const handleChangeThemeMode = () => {
-    theme.onChangeThemeMode();
-  };
+  const handleChangeThemeMode = () => theme.onChangeThemeMode();
 
   const handleChangeChat = (chat: Inbox) => {
     chatCtx.onChangeChat(chat);
@@ -52,45 +82,58 @@ export default function Sidebar() {
 
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateMessage, setUpdateMessage] = useState("");
-  const baseUrl = process.env.REACT_APP_API_URL;
+  const baseUrl =
+    process.env.REACT_APP_API_URL?.replace(/\/+$/, "") || "/api";
 
-  // ---------------------------------------------------------------------------
-  // Pin overlay (no need for chatCtx.setInbox)
-  // ---------------------------------------------------------------------------
-  // Overlay state keyed by participantId to provide optimistic UI for pin/unpin
+  // ------------------------------------------------------------
+  // Pin overlay (optimistic UI; we do not mutate chatCtx.inbox)
+  // ------------------------------------------------------------
   const [pinOverlay, setPinOverlay] = useState<
     Record<string, { isPinned: boolean; pinnedAt: string | null }>
   >({});
 
-  // Merge server data with overlay (icon + local sort will reflect instantly)
+  // Normalize server payload and merge overlay
   const mergedInbox: Inbox[] = useMemo(() => {
-    return chatCtx.inbox.map((x) => {
-      const o = pinOverlay[x.participantId];
-      return o ? { ...x, isPinned: o.isPinned, pinnedAt: o.pinnedAt } : x;
+    const list = Array.isArray(chatCtx.inbox) ? chatCtx.inbox : [];
+    return list.map((x: any) => {
+      const basePinned = normBool(pick(x, ["isPinned", "is_pinned"], false));
+      const basePinnedAt = pick<string | null>(x, ["pinnedAt", "pinned_at"], null);
+
+      // Use last-message time from BE join: created_at (lp.max_time)
+      const baseLastTs =
+        pick<string>(x, ["lastMessageAt", "last_message_at"]) ??
+        pick<string>(x, ["createdAt", "created_at"]) ??
+        pick<string>(x, ["updatedAt", "updated_at"]) ??
+        null;
+
+      const overlay = pinOverlay[x.participantId];
+      const isPinned = overlay?.isPinned ?? basePinned;
+      const pinnedAt = overlay?.pinnedAt ?? basePinnedAt;
+
+      return { ...x, isPinned, pinnedAt, timestamp: baseLastTs } as Inbox;
     });
   }, [chatCtx.inbox, pinOverlay]);
 
-  // Cosmetic sort: pinned first, then recent pinnedAt, then recent timestamp
+  // Sort: pinned first; within pinned => pinnedAt desc; then last message time desc
   const sortedInbox: Inbox[] = useMemo(() => {
-    const toTime = (v?: string | null) => (v ? Date.parse(v) || 0 : 0);
     const arr = [...mergedInbox];
-    arr.sort((a, b) => {
+    arr.sort((a: any, b: any) => {
       const ap = a.isPinned ? 1 : 0;
       const bp = b.isPinned ? 1 : 0;
       if (ap !== bp) return bp - ap;
 
-      const apin = toTime(a.pinnedAt);
-      const bpin = toTime(b.pinnedAt);
+      const apin = toMillis(a.pinnedAt);
+      const bpin = toMillis(b.pinnedAt);
       if (apin !== bpin) return bpin - apin;
 
-      const at = toTime(a.timestamp);
-      const bt = toTime(b.timestamp);
+      const at = toMillis(a.timestamp);
+      const bt = toMillis(b.timestamp);
       return bt - at;
     });
     return arr;
   }, [mergedInbox]);
 
-  // Optimistic toggle + rollback using only overlay state
+  // Optimistic toggle with rollback; overlay-only state
   const togglePin = async (participantId: string, next: boolean) => {
     const now = new Date().toISOString();
 
@@ -101,23 +144,25 @@ export default function Sidebar() {
     }));
 
     try {
-      const res = await fetch(`${baseUrl}/message-inbox/${participantId}/pin`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isPinned: next }),
-      });
+      const res = await fetch(
+        `${baseUrl}/message-inbox/${encodeURIComponent(participantId)}/pin`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isPinned: next }),
+        }
+      );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
 
-      // reconcile with server values
       setPinOverlay((prev) => ({
         ...prev,
         [participantId]: {
-          isPinned: !!json?.data?.is_pinned,
+          isPinned: normBool(json?.data?.is_pinned),
           pinnedAt: json?.data?.pinned_at ?? null,
         },
       }));
-    } catch (_e) {
+    } catch {
       // rollback
       setPinOverlay((prev) => ({
         ...prev,
@@ -130,9 +175,9 @@ export default function Sidebar() {
     try {
       const res = await fetch(`${baseUrl}/template-update`, { method: "GET" });
       const json = await res.json();
-      setUpdateMessage(json.message ?? "Done");
+      setUpdateMessage(json?.message ?? "Done");
     } catch (err: any) {
-      setUpdateMessage(err.message || "Error");
+      setUpdateMessage(err?.message || "Error");
     } finally {
       setShowUpdateModal(true);
     }
@@ -164,27 +209,6 @@ export default function Sidebar() {
           <ThemeIconContainer onClick={handleChangeThemeMode}>
             {theme.mode === "light" ? <BsMoon /> : <BsFillMoonFill />}
           </ThemeIconContainer>
-          {/* <button aria-label="Status">
-            <Icon id="status" className="icon" />
-          </button>
-          <button aria-label="New chat">
-            <Icon id="chat" className="icon" />
-          </button>
-          <OptionsMenu
-            iconClassName="icon"
-            className="icon"
-            ariaLabel="Menu"
-            iconId="menu"
-            options={[
-              "New group",
-              "Create a room",
-              "Profile",
-              "Archived",
-              "Starred",
-              "Settings",
-              "Log out",
-            ]}
-          /> */}
         </Actions>
       </Header>
 
