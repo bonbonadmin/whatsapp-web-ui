@@ -1,5 +1,6 @@
+// /pages/chat/components/sidebar/index.tsx
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { BsFillMoonFill, BsMoon } from "react-icons/bs";
 import InfiniteScroll from "react-infinite-scroll-component";
 
@@ -44,20 +45,91 @@ export default function Sidebar() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userEmail');
-    navigate('/login', { replace: true });
+    localStorage.removeItem("token");
+    localStorage.removeItem("userEmail");
+    navigate("/login", { replace: true });
   };
 
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateMessage, setUpdateMessage] = useState("");
   const baseUrl = process.env.REACT_APP_API_URL;
 
+  // ---------------------------------------------------------------------------
+  // Pin overlay (no need for chatCtx.setInbox)
+  // ---------------------------------------------------------------------------
+  // Overlay state keyed by participantId to provide optimistic UI for pin/unpin
+  const [pinOverlay, setPinOverlay] = useState<
+    Record<string, { isPinned: boolean; pinnedAt: string | null }>
+  >({});
+
+  // Merge server data with overlay (icon + local sort will reflect instantly)
+  const mergedInbox: Inbox[] = useMemo(() => {
+    return chatCtx.inbox.map((x) => {
+      const o = pinOverlay[x.participantId];
+      return o ? { ...x, isPinned: o.isPinned, pinnedAt: o.pinnedAt } : x;
+    });
+  }, [chatCtx.inbox, pinOverlay]);
+
+  // Cosmetic sort: pinned first, then recent pinnedAt, then recent timestamp
+  const sortedInbox: Inbox[] = useMemo(() => {
+    const toTime = (v?: string | null) => (v ? Date.parse(v) || 0 : 0);
+    const arr = [...mergedInbox];
+    arr.sort((a, b) => {
+      const ap = a.isPinned ? 1 : 0;
+      const bp = b.isPinned ? 1 : 0;
+      if (ap !== bp) return bp - ap;
+
+      const apin = toTime(a.pinnedAt);
+      const bpin = toTime(b.pinnedAt);
+      if (apin !== bpin) return bpin - apin;
+
+      const at = toTime(a.timestamp);
+      const bt = toTime(b.timestamp);
+      return bt - at;
+    });
+    return arr;
+  }, [mergedInbox]);
+
+  // Optimistic toggle + rollback using only overlay state
+  const togglePin = async (participantId: string, next: boolean) => {
+    const now = new Date().toISOString();
+
+    // optimistic overlay
+    setPinOverlay((prev) => ({
+      ...prev,
+      [participantId]: { isPinned: next, pinnedAt: next ? now : null },
+    }));
+
+    try {
+      const res = await fetch(`${baseUrl}/message-inbox/${participantId}/pin`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPinned: next }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+
+      // reconcile with server values
+      setPinOverlay((prev) => ({
+        ...prev,
+        [participantId]: {
+          isPinned: !!json?.data?.is_pinned,
+          pinnedAt: json?.data?.pinned_at ?? null,
+        },
+      }));
+    } catch (_e) {
+      // rollback
+      setPinOverlay((prev) => ({
+        ...prev,
+        [participantId]: { isPinned: !next, pinnedAt: !next ? now : null },
+      }));
+    }
+  };
+
   const handleTemplateUpdate = async () => {
     try {
       const res = await fetch(`${baseUrl}/template-update`, { method: "GET" });
       const json = await res.json();
-      // assume your API returns { success: boolean, message: string }
       setUpdateMessage(json.message ?? "Done");
     } catch (err: any) {
       setUpdateMessage(err.message || "Error");
@@ -69,7 +141,7 @@ export default function Sidebar() {
   return (
     <SidebarContainer
       customStyles={{
-        overflow: 'hidden'
+        overflow: "hidden",
       }}
     >
       <Header>
@@ -87,7 +159,7 @@ export default function Sidebar() {
             onClick={handleTemplateUpdate}
             style={{ background: "none", border: "none", cursor: "pointer" }}
           >
-            <Icon id="singleTick" className="icon" />
+            <Icon id="sync" className="icon" />
           </button>
           <ThemeIconContainer onClick={handleChangeThemeMode}>
             {theme.mode === "light" ? <BsMoon /> : <BsFillMoonFill />}
@@ -115,6 +187,7 @@ export default function Sidebar() {
           /> */}
         </Actions>
       </Header>
+
       {/* <SidebarAlert /> */}
       <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "0 8px" }}>
         <div style={{ flex: 1 }}>
@@ -124,25 +197,28 @@ export default function Sidebar() {
           <ToggleSearch />
         </div>
       </div>
+
       <ContactContainer id="scrollableDiv" style={{ overflow: "auto", height: "80vh" }}>
         <InfiniteScroll
-          dataLength={chatCtx.inbox.length}
+          dataLength={sortedInbox.length}
           next={chatCtx.loadMore}
           hasMore={chatCtx.hasMore}
           loader={<Loader>Loading..</Loader>}
           endMessage={<EndMessage>No more chats</EndMessage>}
           scrollableTarget="scrollableDiv"
         >
-          {chatCtx.inbox.map((inbox) => (
+          {sortedInbox.map((inbox) => (
             <InboxContact
               key={inbox.id}
               inbox={inbox}
               isActive={inbox.id === chatCtx.activeChat?.id}
               onChangeChat={handleChangeChat}
+              onTogglePin={togglePin}
             />
           ))}
         </InfiniteScroll>
       </ContactContainer>
+
       <Modal
         open={showUpdateModal}
         onClose={() => setShowUpdateModal(false)}
