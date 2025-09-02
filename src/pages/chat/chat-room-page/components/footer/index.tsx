@@ -19,6 +19,11 @@ import Typography from "@mui/material/Typography";
 import Modal from "@mui/material/Modal";
 import Checkbox from "@mui/material/Checkbox";
 import Grid from "@mui/material/Grid"; // make sure to import
+import FormControl from "@mui/material/FormControl";
+import FormLabel from "@mui/material/FormLabel";
+import RadioGroup from "@mui/material/RadioGroup";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Radio from "@mui/material/Radio";
 
 interface WhatsappComponent {
   text: string;
@@ -83,6 +88,7 @@ export default function Footer() {
   const [showWebhookModal, setShowWebhookModal] = useState(false);
   const [webhookMessage, setWebhookMessage] = useState("");
   const [showAIModal, setShowAIModal] = useState(false);
+  const [aiRole, setAiRole] = useState<"user" | "assistant">("user");
   const [aiMessage, setAiMessage] = useState("");
   const [showPresetModal, setShowPresetModal] = useState(false);
   const [presetMessages, setPresetMessages] = useState<PresetMessage[]>([]);
@@ -271,11 +277,13 @@ export default function Footer() {
       body: JSON.stringify({
         phoneNumber: chatCtx.activeChat.participantId,
         textMessage: aiMessage,
+        messageRole: aiRole, // !!
       }),
     })
       .then(() => {
         setShowAIModal(false);
         setAiMessage("");
+        setAiRole("user"); // !!
       })
       .catch(console.error);
   };
@@ -440,6 +448,7 @@ export default function Footer() {
         onClose={() => {
           setShowAIModal(false);
           setAiMessage("");
+          setAiRole("user"); // !!
         }}
       >
         <Box
@@ -456,14 +465,41 @@ export default function Footer() {
           }}
         >
           <Typography variant="h6">Manual AI</Typography>
+
+          {/* !! Role selector */}
+          <FormControl component="fieldset" variant="standard">
+            <FormLabel component="legend" sx={{ color: "#ccc" }}>
+              Post as
+            </FormLabel>
+            <RadioGroup
+              row
+              value={aiRole}
+              onChange={(e) => setAiRole(e.target.value as "user" | "assistant")}
+            >
+              <FormControlLabel
+                value="user"
+                control={<Radio />}
+                label="User"
+                sx={{ color: "#fff" }}
+              />
+              <FormControlLabel
+                value="assistant"
+                control={<Radio />}
+                label="Assistant"
+                sx={{ color: "#fff" }}
+              />
+            </RadioGroup>
+          </FormControl>
+
           <TextArea
             value={aiMessage}
             placeholder="Type your AI prompt here…"
-            onChange={e => setAiMessage(e.target.value)}
+            onChange={(e) => setAiMessage(e.target.value)}
             style={{ minHeight: "120px", color: "#fff" }}
           />
+
           <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-            <SendMessageButton onClick={sendAI}>
+            <SendMessageButton onClick={sendAI} disabled={!aiMessage.trim()}>
               <Icon id="send" />
             </SendMessageButton>
           </Box>
