@@ -28,6 +28,39 @@ export default function InboxContact(props: InboxContactProps) {
   const { inbox, onChangeChat, isActive, onTogglePin } = props;
   const { name, lastMessage, image, timestamp } = props.inbox;
 
+  // put this below the imports, above `export default function InboxContact`
+  function toLocalInboxTime(input: string | number | Date): string {
+    if (input == null) return "";
+    let d: Date;
+
+    // numbers: epoch seconds or ms
+    if (typeof input === "number") {
+      d = new Date(input < 1e12 ? input * 1000 : input);
+    } else if (input instanceof Date) {
+      d = input;
+    } else {
+      const s = String(input).trim();
+      // handle "YYYY-MM-DD HH:mm:ss" as UTC
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) {
+        d = new Date(s.replace(" ", "T") + "Z");
+      } else {
+        d = new Date(s); // ISO with Z/offset or other parseable forms
+      }
+    }
+
+    if (isNaN(d.getTime())) return "";
+
+    const now = new Date();
+    const sameDay =
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate();
+
+    return sameDay
+      ? d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) // local TZ
+      : d.toLocaleDateString(undefined, { month: "short", day: "2-digit" });
+  }
+
   // Inline, no helper:
   const rawTime =
     (inbox as any).timestamp ??
@@ -60,7 +93,7 @@ export default function InboxContact(props: InboxContactProps) {
         <TopContent>
           <Name>{name}</Name>
           {timestamp && lastMessage ? (
-            <Time>{displayTime}</Time>
+            <Time>{toLocalInboxTime(timestamp)}</Time>
           ) : (
             <Trailing
               {...props.inbox}
