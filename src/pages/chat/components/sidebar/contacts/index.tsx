@@ -21,12 +21,23 @@ type InboxContactProps = {
   inbox: Inbox;
   onChangeChat?: (chat: Inbox) => void;
   isActive?: boolean;
-  onTogglePin?: (participantId: string, next: boolean) => void; // <- used by chevron
+  onTogglePin?: (participantId: string, next: boolean) => void;
 };
 
 export default function InboxContact(props: InboxContactProps) {
-  const { onChangeChat, isActive, onTogglePin } = props;
+  const { inbox, onChangeChat, isActive, onTogglePin } = props;
   const { name, lastMessage, image, timestamp } = props.inbox;
+
+  // Inline, no helper:
+  const rawTime =
+    (inbox as any).timestamp ??
+    (inbox as any).created_at ??
+    (inbox as any).updated_at ??
+    (inbox as any).createdAt ??
+    (inbox as any).updatedAt ??
+    "";
+
+  const displayTime = String(rawTime).replace("T", " ").slice(0, 19); // "YYYY-MM-DD HH:mm:ss"
 
   const [hovered, setHovered] = useState(false);
 
@@ -49,7 +60,7 @@ export default function InboxContact(props: InboxContactProps) {
         <TopContent>
           <Name>{name}</Name>
           {timestamp && lastMessage ? (
-            <Time>{timestamp}</Time>
+            <Time>{displayTime}</Time>
           ) : (
             <Trailing
               {...props.inbox}
