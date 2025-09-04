@@ -1,5 +1,8 @@
+// /pages/chat/context/chat.tsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { inbox } from "../data/inbox";
+import axios from "axios";
+
+import { inbox as demoInbox } from "../data/inbox";
 import { Inbox, InboxResponse } from "common/types/common.type";
 import {
   getMessages,
@@ -7,7 +10,6 @@ import {
   MessagePayload,
   MessageResponse,
 } from "../chat-room-page/components/messages-list/data/get-messages";
-import axios from "axios";
 
 type BookingEvent = { event_name: string; started_at: string };
 
@@ -16,7 +18,7 @@ type User = {
   image: string;
 };
 
-type SearchResult = Inbox | Message; // Adjust based on your API response
+type SearchResult = Inbox | Message;
 
 type ChatContextProp = {
   user: User;
@@ -40,7 +42,7 @@ type ChatContextProp = {
 
 const initialValue: ChatContextProp = {
   user: { name: "Jazim Abbas", image: "/assets/images/girl.jpeg" },
-  inbox,
+  inbox: demoInbox,
   participantMessages: getMessages(),
   firstOpenChat: false,
   searchText: "",
@@ -89,6 +91,7 @@ export default function ChatProvider(props: { children: any }) {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isFetchInbox, setIsFetchInbox] = useState<boolean>(false);
   const [bookingEvents, setBookingEvents] = useState<BookingEvent[] | undefined>(undefined);
+
   const baseURL = process.env.REACT_APP_API_URL;
 
   const activeChatRef = useRef(activeChat);
@@ -96,22 +99,21 @@ export default function ChatProvider(props: { children: any }) {
   const toggleSearchRef = useRef(toggleSearch);
   const isFetchInboxRef = useRef(isFetchInbox);
 
-  // Update the ref whenever activeChat changes
-  useEffect(() => {
-    activeChatRef.current = activeChat;
-  }, [activeChat]);
+  // keep refs in sync
+  useEffect(() => { activeChatRef.current = activeChat; }, [activeChat]);
+  useEffect(() => { lastUpdateRef.current = lastUpdate; }, [lastUpdate]);
+  useEffect(() => { toggleSearchRef.current = toggleSearch; }, [toggleSearch]);
+  useEffect(() => { isFetchInboxRef.current = isFetchInbox; }, [isFetchInbox]);
 
+  // Ensure axios header has x-wa-id on mount (so first GET uses it if already selected)
   useEffect(() => {
-    lastUpdateRef.current = lastUpdate;
-  }, [lastUpdate]);
-
-  useEffect(() => {
-    toggleSearchRef.current = toggleSearch;
-  }, [toggleSearch]);
-
-  useEffect(() => {
-    isFetchInboxRef.current = isFetchInbox;
-  }, [isFetchInbox]);
+    const storedId = localStorage.getItem("wa:selectedId") || "";
+    if (storedId) {
+      axios.defaults.headers.common["x-wa-id"] = storedId;
+    } else {
+      delete axios.defaults.headers.common["x-wa-id"];
+    }
+  }, []);
 
   const handleChangeChat = (chat: Inbox) => {
     setActiveChat(chat);
@@ -132,85 +134,79 @@ export default function ChatProvider(props: { children: any }) {
         filePath: msg.filePath ?? null,
         nonManual: msg.nonManual ?? false,
       };
-
       await axios.post(`${baseURL}/message/send`, payload);
       fetchMessages(msg.to);
     } catch (error) {
-      console.error("Error fetching messages list:", error);
+      console.error("Error sending message:", error);
     }
   };
 
   const fetchMessages = useMemo(
     () => async (id: any) => {
       try {
-        axios
-          .get(`${baseURL}/message-inbox/` + id)
-          .then((response) => {
-            const newMessages: Message[] = [];
+        const response = await axios.get(`${baseURL}/message-inbox/` + id);
+        const newMessages: Message[] = [];
 
-            // --- NEW: extract booking events from the same response ---
-            const raw = Array.isArray(response.data?.bookingEvents)
-              ? response.data.bookingEvents
-              : [];
-            const normalizedEvents: BookingEvent[] = raw
-              .map((e: any) => ({
-                event_name: e.event_name ?? e.booking_event_name,
-                started_at: e.started_at,
-              }))
-              .filter((e: BookingEvent) => e.event_name && e.started_at);
+        // booking events (if present)
+        const raw = Array.isArray(response.data?.bookingEvents)
+          ? response.data.bookingEvents
+          : [];
+        const normalizedEvents: BookingEvent[] = raw
+          .map((e: any) => ({
+            event_name: e.event_name ?? e.booking_event_name,
+            started_at: e.started_at,
+          }))
+          .filter((e: BookingEvent) => e.event_name && e.started_at);
 
-            setBookingEvents(normalizedEvents.length ? normalizedEvents : undefined);
+        setBookingEvents(normalizedEvents.length ? normalizedEvents : undefined);
 
-            if (response.data.data.length) {
-              response.data.data.forEach((value: MessageResponse) => {
-                // const timeStamp =
-                //   new Date(value.created_at).getHours() +
-                //   ":" +
-                //   new Date(value.created_at).getMinutes();
-                const timeStamp =
-                  new Date().toDateString() === new Date(value.created_at).toDateString()
-                    ? new Date(value.created_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: false,
-                      })
-                    : new Date(value.created_at).toLocaleDateString("en-GB", {
-                        day: "2-digit",
-                        month: "2-digit",
-                      });
-                const data: Message = {
-                  id: value.id,
-                  body: value.message_text,
-                  date: new Date(value.created_at).toLocaleDateString(),
-                  timestamp: timeStamp,
-                  messageStatus: value.participant_message_status,
-                  isOpponent: value.from_me === 0 ? true : false,
-                  messageType: value.message_type,
-                  mediaLocation: value.media_location
-                };
-                newMessages.push(data);
-              });
-            }
-            setMessages(newMessages);
-          })
-          .catch((err) => {
-            console.log(err.message);
+        if (response.data.data.length) {
+          response.data.data.forEach((value: MessageResponse) => {
+            const timeStamp =
+              new Date().toDateString() === new Date(value.created_at).toDateString()
+                ? new Date(value.created_at).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false,
+                  })
+                : new Date(value.created_at).toLocaleDateString("en-GB", {
+                    day: "2-digit",
+                    month: "2-digit",
+                  });
+            const data: Message = {
+              id: value.id,
+              body: value.message_text,
+              date: new Date(value.created_at).toLocaleDateString(),
+              timestamp: timeStamp,
+              messageStatus: value.participant_message_status,
+              isOpponent: value.from_me === 0 ? true : false,
+              messageType: value.message_type,
+              mediaLocation: value.media_location,
+            };
+            newMessages.push(data);
           });
+        }
+        setMessages(newMessages);
       } catch (error) {
         console.error("Error fetching messages list:", error);
       }
     },
-    []
+    [baseURL]
   );
-  // Function to fetch inbox data
+
   const fetchInbox = useMemo(
     () =>
       async (query?: string, page: number = 1, perPage: number = 100) => {
         try {
+          // ensure we have a WA id before fetching
+          if (!axios.defaults.headers.common["x-wa-id"]) {
+            return;
+          }
+
           setIsFetchInbox(true);
           const params: any = { page, perPage };
           if (query) params.searchTerm = query;
-          console.log("params: ", params);
+
           const response = await axios.get(`${baseURL}/message-inbox`, { params });
 
           const newInbox: Inbox[] = [];
@@ -236,13 +232,13 @@ export default function ChatProvider(props: { children: any }) {
               timestamp: timeStamp,
               messageStatus: value.message_status === 1 ? "READ" : "DELIVERED",
               notificationsCount: value.unread_msg,
-              isPinned: value.is_pinned,
+              isPinned: !!value.is_pinned,
               pinnedAt: value.pinned_at || null,
               updatedAt: value.updated_at,
             };
             newInbox.push(data);
 
-            // Fetch messages for active chat if conditions are met
+            // refresh open chat if unread
             if (
               data.participantId === activeChatRef.current?.participantId &&
               value.message_status === 0
@@ -252,36 +248,22 @@ export default function ChatProvider(props: { children: any }) {
           });
 
           const timeInfo = response.data.timeInfo;
-          if (timeInfo) {
+          if (timeInfo?.updated_at) {
             setLastUpdate(timeInfo.updated_at);
           } else {
             setLastUpdate("");
           }
-          // if (newInbox && newInbox.length > 0) {
-          //   const sortUpdatedAt = [...newInbox].sort(
-          //     (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-          //   )[0];
-          //   setLastUpdate(sortUpdatedAt.updatedAt);
-          // }
 
-          //setInbox(newInbox);
-          setInbox((prevInbox) => [...prevInbox, ...newInbox]);
+          setInbox((prev) => (page === 1 ? newInbox : [...prev, ...newInbox]));
+
           if (toggleSearchRef.current) {
-            let i = 0;
-            while (i < newInbox.length) {
-              if (Number(newInbox[i].notificationsCount) <= 0) {
-                newInbox.splice(i, 1); // Remove the element at index i
-              } else {
-                i++; // Move to the next index only if no removal happens
-              }
-            }
-            setInbox(newInbox);
+            const onlyUnread = newInbox.filter(
+              (item) => Number(item.notificationsCount) > 0
+            );
+            setInbox(onlyUnread);
           }
-          if (newInbox.length < perPage) {
-            setHasMore(false); // No more data to fetch
-          } else {
-            setHasMore(true);
-          }
+
+          setHasMore(newInbox.length >= perPage);
           setIsFetchInbox(false);
         } catch (error) {
           setIsFetchInbox(false);
@@ -293,29 +275,22 @@ export default function ChatProvider(props: { children: any }) {
 
   const handleSearch = useMemo(
     () => async (query: string) => {
-      console.log("handling search: ", query);
       setInbox([]);
       setSearchText(query);
-      setCurrentPage(1); // Reset to first page
-      setHasMore(true); // Reset hasMore
-      // console.log("searchText1:", searchText);
+      setCurrentPage(1);
+      setHasMore(true);
 
       if (query.trim() === "") {
-        // If the search query is empty, fetch the standard inbox
-        console.log("one");
         await fetchInbox(undefined, 1);
         return;
       }
-      //setIsSearching(true);
       try {
-        // Fetch inbox with the search term
-        console.log("two");
         await fetchInbox(query, 1);
       } catch (error) {
         console.error("Error performing search:", error);
       }
     },
-    [fetchInbox, inbox]
+    [fetchInbox]
   );
 
   const handleToggleSearch = (toggle: boolean) => {
@@ -333,64 +308,64 @@ export default function ChatProvider(props: { children: any }) {
   const loadMore = useCallback(() => {
     const nextPage = currentPage + 1;
     setCurrentPage(nextPage);
-    console.log("Loading more: ", nextPage);
     fetchInbox(searchText.trim() !== "" ? searchText : undefined, nextPage);
-  }, [hasMore, currentPage, fetchInbox, searchText]);
+  }, [currentPage, fetchInbox, searchText]);
 
+  // Poll server for changes every 10s; only refetch when server says it changed
   useEffect(() => {
-    // Define the async function inside useEffect to call the API
-    const fetchData = async () => {
-      // console.log("Searchtext: ", searchText);
+    const tick = async () => {
       try {
-        // API endpoint
-        if (!isFetchInboxRef.current) {
-          if (lastUpdateRef.current && lastUpdateRef.current !== "") {
-            const payload = {
-              clientLastUpdate: lastUpdateRef.current,
-            };
-            const response = await axios.post(`${baseURL}/event-check-inbox`, payload);
-            console.log(response.data);
-            if (response.data && response.data.data) {
-              setInbox([]);
-              fetchInbox(searchText.trim() !== "" ? searchText : undefined);
-            }
-          }
+        // must have a waId header set, a lastUpdate value, and not be mid-fetch
+        if (
+          !axios.defaults.headers.common["x-wa-id"] ||
+          !lastUpdateRef.current ||
+          isFetchInboxRef.current
+        ) {
+          return;
+        }
+
+        const payload = { clientLastUpdate: lastUpdateRef.current };
+        const response = await axios.post(`${baseURL}/event-check-inbox`, payload);
+        const changed = !!response.data?.data;
+
+        if (changed) {
+          // only refetch if server indicates a change
+          setInbox([]);
+          await fetchInbox(searchText.trim() !== "" ? searchText : undefined, 1);
         }
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error checking inbox update:", error);
       }
     };
 
-    fetchData();
+    // initial tick (only if we already have a waId)
+    if (axios.defaults.headers.common["x-wa-id"]) {
+      tick();
+    }
 
-    const intervalId = setInterval(fetchData, 10000);
+    const id = setInterval(tick, 10000);
+    return () => clearInterval(id);
+  }, [baseURL, fetchInbox, searchText]);
 
-    return () => clearInterval(intervalId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchText]);
-
-  // useEffect(() => {
-  //   if (inbox.length === 0) {
-  //     console.log("Empty Inbox");
-  //     fetchInbox();
-  //   }
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [inbox]);
-
+  // initial load: only if we already have a waId header (Sidebar may set it later & call onSearch)
   useEffect(() => {
-    fetchInbox();
+    if (axios.defaults.headers.common["x-wa-id"]) {
+      fetchInbox();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleFileUpload = async (file: File, msg: string, type: string, nonManual: boolean) => {
+  const handleFileUpload = async (
+    file: File,
+    msg: string,
+    type: string,
+    nonManual: boolean
+  ) => {
     try {
       const formData = new FormData();
       formData.append("file", file);
 
-      const headers = {
-        "Content-Type": "multipart/form-data",
-      };
-
+      const headers = { "Content-Type": "multipart/form-data" };
       const uploadMedia = await axios.post(`${baseURL}/message/uploadMedia`, formData, {
         headers,
       });
@@ -403,7 +378,6 @@ export default function ChatProvider(props: { children: any }) {
         filePath: uploadMedia.data.filePath,
         nonManual,
       };
-      console.log(payload);
 
       await axios.post(`${baseURL}/message/send`, payload);
       fetchMessages(activeChat?.participantId);

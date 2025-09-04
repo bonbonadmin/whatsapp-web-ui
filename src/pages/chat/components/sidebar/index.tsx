@@ -1,8 +1,10 @@
 // /pages/chat/components/sidebar/index.tsx
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { BsFillMoonFill, BsMoon } from "react-icons/bs";
+import styled from "styled-components";
 import InfiniteScroll from "react-infinite-scroll-component";
+import axios from "axios";
 
 import SidebarAlert from "./alert";
 import InboxContact from "./contacts";
@@ -14,7 +16,6 @@ import { Inbox } from "common/types/common.type";
 import { useChatContext } from "pages/chat/context/chat";
 import {
   Actions,
-  Avatar,
   ContactContainer,
   EndMessage,
   Header,
@@ -38,18 +39,10 @@ const normBool = (v: any): boolean =>
 const toMillis = (v?: string | null): number => {
   if (!v) return 0;
   let s = String(v).trim();
-
-  // Space -> 'T'
   if (s.includes(" ")) s = s.replace(" ", "T");
-
-  // Normalize timezone:
-  //  +0700 -> +07:00
   s = s.replace(/([+-]\d{2})(\d{2})$/, "$1:$2");
-  //  +07 -> +07:00
   s = s.replace(/([+-]\d{2})$/, "$1:00");
-  //  +00 or +00:00 -> Z
   s = s.replace(/\+00:00$/, "Z").replace(/\+00$/, "Z");
-
   const t = Date.parse(s);
   return Number.isNaN(t) ? 0 : t;
 };
@@ -57,6 +50,8 @@ const toMillis = (v?: string | null): number => {
 const pick = <T,>(obj: any, keys: string[], fallback?: T): T | undefined =>
   keys.reduce<any>((acc, k) => (acc !== undefined ? acc : obj?.[k]), undefined) ??
   fallback;
+
+type WaLine = { id: string; number?: string };
 
 // ------------------------------
 // Component
@@ -68,10 +63,154 @@ export default function Sidebar() {
 
   const handleChangeThemeMode = () => theme.onChangeThemeMode();
 
+  const baseUrl =
+    process.env.REACT_APP_API_URL?.replace(/\/+$/, "") || "/api";
+
+  // WA lines
+  const [waLines, setWaLines] = useState<WaLine[]>([]);
+  const [selectedWaId, setSelectedWaId] = useState<string>("");
+
+  // headers helper — ALWAYS a Record<string,string>
+  const waHeaders = useMemo<Record<string, string>>(() => {
+    const h: Record<string, string> = {};
+    if (selectedWaId) h["x-wa-id"] = selectedWaId;
+    return h;
+  }, [selectedWaId]);
+
+  // 🔹 Reusable change handler: set state, persist, set axios default header, and fetch inbox
+  const onChangeLine = useCallback(
+    (id: string) => {
+      setSelectedWaId(id);
+      localStorage.setItem("wa:selectedId", id);
+
+      // Set global axios default header so all axios requests include waId
+      axios.defaults.headers.common["x-wa-id"] = id;
+
+      // ensure we’re not in "unread only" mode, then fetch based on current search text
+      chatCtx.onToggleSearch(false);
+      chatCtx.onSearch(chatCtx.searchText || "");
+    },
+    [chatCtx]
+  );
+
+  // Theme-aware select with custom caret
+  const LineSelectWrap = styled.div`
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-right: 8px;
+`;
+
+  const LineSelect = styled.select<{ $mode: "light" | "dark" }>`
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+
+  min-width: 100px;
+  max-width: 200px;
+  padding: 8px 36px 8px 12px;
+  border-radius: 10px;
+  border: 1px solid
+    ${({ $mode }) => ($mode === "light" ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.25)")};
+  background: ${({ $mode }) =>
+      $mode === "light" ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.06)"};
+  color: ${({ $mode }) => ($mode === "light" ? "#1f2937" : "#e5e7eb")};
+  outline: none;
+  transition: box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
+
+  &:hover {
+    border-color: ${({ $mode }) =>
+      $mode === "light" ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.38)"};
+  }
+
+  &:focus {
+    box-shadow: 0 0 0 3px
+      ${({ $mode }) => ($mode === "light" ? "rgba(59,130,246,0.35)" : "rgba(96,165,250,0.35)")};
+    border-color: ${({ $mode }) =>
+      $mode === "light" ? "rgba(59,130,246,0.9)" : "rgba(96,165,250,0.9)"};
+  }
+
+  /* Make options readable in both modes (note: some browsers limit option styling) */
+  & > option {
+    background: ${({ $mode }) =>
+      $mode === "light" ? "#ffffff" : "#1f2937"}; /* white / gray-800 */
+    color: ${({ $mode }) => ($mode === "light" ? "#111827" : "#e5e7eb")}; /* gray-900 / gray-200 */
+  }
+`;
+
+  const Caret = styled.span<{ $mode: "light" | "dark" }>`
+  pointer-events: none;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  display: inline-block;
+
+  /* simple SVG chevron so it adapts to theme color */
+  background-image: ${({ $mode }) =>
+      `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none' stroke='${encodeURIComponent(
+        $mode === "light" ? "#374151" : "#d1d5db"
+      )}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 8 10 12 14 8'/></svg>")`};
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.9;
+`;
+
+  // 🔹 Fetch WA lines on mount and pick default (first one or stored one), then fetch inbox
+  useEffect(() => {
+    const cached = localStorage.getItem("wa:ids");
+    const applyLines = (lines: WaLine[]) => {
+      setWaLines(lines);
+
+      // restore or set first id as default
+      const storedId = localStorage.getItem("wa:selectedId") || lines[0]?.id || "";
+      setSelectedWaId(storedId);
+
+      if (storedId) {
+        localStorage.setItem("wa:selectedId", storedId);
+        axios.defaults.headers.common["x-wa-id"] = storedId; // make BE see it
+        // kick an initial inbox load
+        chatCtx.onSearch("");
+      }
+    };
+
+    if (cached) {
+      try {
+        const lines = JSON.parse(cached) as WaLine[];
+        if (Array.isArray(lines) && lines.length) {
+          applyLines(lines);
+          return; // ✅ no network call
+        }
+      } catch { }
+    }
+
+    // Fallback: fetch once and cache
+    (async () => {
+      try {
+        const res = await fetch(`${baseUrl}/wa/ids`);
+        const json = await res.json();
+        const lines: WaLine[] = Array.isArray(json?.lines) ? json.lines : [];
+        localStorage.setItem("wa:ids", JSON.stringify(lines));
+        applyLines(lines);
+      } catch (e) {
+        console.error("Failed to load WA IDs", e);
+        setWaLines([]);
+        setSelectedWaId("");
+        delete axios.defaults.headers.common["x-wa-id"];
+      }
+    })();
+    // empty deps => run only once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // open chat, keep waId in URL
   const handleChangeChat = (chat: Inbox) => {
     chatCtx.onChangeChat(chat);
     chatCtx.onFirstOpenChat(true);
-    navigate("/" + chat.participantId);
+    const q = selectedWaId ? `?waId=${encodeURIComponent(selectedWaId)}` : "";
+    navigate("/" + chat.participantId + q);
   };
 
   const handleLogout = () => {
@@ -82,24 +221,18 @@ export default function Sidebar() {
 
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateMessage, setUpdateMessage] = useState("");
-  const baseUrl =
-    process.env.REACT_APP_API_URL?.replace(/\/+$/, "") || "/api";
 
-  // ------------------------------------------------------------
-  // Pin overlay (optimistic UI; we do not mutate chatCtx.inbox)
-  // ------------------------------------------------------------
+  // Pin overlay (optimistic UI)
   const [pinOverlay, setPinOverlay] = useState<
     Record<string, { isPinned: boolean; pinnedAt: string | null }>
   >({});
 
-  // Normalize server payload and merge overlay
+  // Normalize + merge overlay
   const mergedInbox: Inbox[] = useMemo(() => {
     const list = Array.isArray(chatCtx.inbox) ? chatCtx.inbox : [];
     return list.map((x: any) => {
       const basePinned = normBool(pick(x, ["isPinned", "is_pinned"], false));
       const basePinnedAt = pick<string | null>(x, ["pinnedAt", "pinned_at"], null);
-
-      // Use last-message time from BE join: created_at (lp.max_time)
       const baseLastTs =
         pick<string>(x, ["lastMessageAt", "last_message_at"]) ??
         pick<string>(x, ["createdAt", "created_at"]) ??
@@ -114,18 +247,16 @@ export default function Sidebar() {
     });
   }, [chatCtx.inbox, pinOverlay]);
 
-  // Sort: pinned first; within pinned => pinnedAt desc; then last message time desc
+  // Sort
   const sortedInbox: Inbox[] = useMemo(() => {
     const arr = [...mergedInbox];
     arr.sort((a: any, b: any) => {
       const ap = a.isPinned ? 1 : 0;
       const bp = b.isPinned ? 1 : 0;
       if (ap !== bp) return bp - ap;
-
       const apin = toMillis(a.pinnedAt);
       const bpin = toMillis(b.pinnedAt);
       if (apin !== bpin) return bpin - apin;
-
       const at = toMillis(a.timestamp);
       const bt = toMillis(b.timestamp);
       return bt - at;
@@ -133,22 +264,24 @@ export default function Sidebar() {
     return arr;
   }, [mergedInbox]);
 
-  // Optimistic toggle with rollback; overlay-only state
+  // Optimistic toggle with rollback
   const togglePin = async (participantId: string, next: boolean) => {
     const now = new Date().toISOString();
-
-    // optimistic overlay
     setPinOverlay((prev) => ({
       ...prev,
       [participantId]: { isPinned: next, pinnedAt: next ? now : null },
     }));
 
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        ...waHeaders,
+      };
       const res = await fetch(
         `${baseUrl}/message-inbox/${encodeURIComponent(participantId)}/pin`,
         {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({ isPinned: next }),
         }
       );
@@ -163,7 +296,6 @@ export default function Sidebar() {
         },
       }));
     } catch {
-      // rollback
       setPinOverlay((prev) => ({
         ...prev,
         [participantId]: { isPinned: !next, pinnedAt: !next ? now : null },
@@ -173,7 +305,15 @@ export default function Sidebar() {
 
   const handleTemplateUpdate = async () => {
     try {
-      const res = await fetch(`${baseUrl}/template-update`, { method: "GET" });
+      if (!selectedWaId) {
+        setUpdateMessage("Please select a WhatsApp line first.");
+        setShowUpdateModal(true);
+        return;
+      }
+      const res = await fetch(`${baseUrl}/template-update`, {
+        method: "GET",
+        headers: waHeaders, // send selected waId
+      });
       const json = await res.json();
       setUpdateMessage(json?.message ?? "Done");
     } catch (err: any) {
@@ -184,14 +324,28 @@ export default function Sidebar() {
   };
 
   return (
-    <SidebarContainer
-      customStyles={{
-        overflow: "hidden",
-      }}
-    >
+    <SidebarContainer customStyles={{ overflow: "hidden" }}>
       <Header>
-        <ImageWrapper>{/* <Avatar src="/assets/images/profile.png" /> */}</ImageWrapper>
+        {/* <ImageWrapper><img src="/assets/images/profile.png" alt="" /></ImageWrapper> */}
         <Actions>
+          {/* WA selector (left of Logout) */}
+          <LineSelectWrap>
+            <LineSelect
+              $mode={theme.mode}
+              aria-label="Select WhatsApp line"
+              value={selectedWaId}
+              onChange={(e) => onChangeLine(e.target.value)}
+            >
+              {waLines.length === 0 && <option value="">No WA lines</option>}
+              {waLines.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.number ? `${l.number} · ${l.id}` : l.id}
+                </option>
+              ))}
+            </LineSelect>
+            <Caret $mode={theme.mode} />
+          </LineSelectWrap>
+
           <button
             aria-label="Logout"
             onClick={handleLogout}
