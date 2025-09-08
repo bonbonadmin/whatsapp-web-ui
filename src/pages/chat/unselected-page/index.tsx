@@ -23,7 +23,7 @@ export default function UnSelectedChatPage() {
           Use Message on up to 4 linked devices and 1 phone at the same time.
         </Text>
         <Text>
-          <span>Built by Jazim Abbas & Bonbon</span>{" "}
+          <span>Built by Jazim Abbas & Eventory</span>{" "}
           {/* <Link target="_blank" href="https://github.com/jazimabbas">
             Jazim Abbas
           </Link>

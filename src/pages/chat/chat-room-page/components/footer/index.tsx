@@ -31,6 +31,7 @@ interface WhatsappComponent {
   type: string;
   buttons?: any[];
   example?: Record<string, any>;
+  format?: "TEXT" | "IMAGE" | "VIDEO" | "DOCUMENT";
 }
 interface WhatsappTemplate {
   id: number;
@@ -75,6 +76,7 @@ export default function Footer() {
 
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [templates, setTemplates] = useState<WhatsappTemplate[]>([]);
+  const [headerMediaUrl, setHeaderMediaUrl] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [varInputs, setVarInputs] = useState<Record<string, string>>({});
   const [buttonInputs, setButtonInputs] = useState<{
@@ -153,6 +155,20 @@ export default function Footer() {
 
   const handleSelectTemplate = (template: WhatsappTemplate) => {
     setSelectedTemplate(template);
+    const headerComp = template.all_component?.find((c) => c.type === "HEADER");
+    const headerFmt = (headerComp?.format || "").toUpperCase(); // "IMAGE" | "VIDEO" | ...
+
+    const exampleHeaderUrl =
+      headerComp?.example?.header_handle?.[0] ??
+      headerComp?.example?.header_handler?.[0] ??
+      "";
+
+    // Prepopulate URL only if header is IMAGE or VIDEO; otherwise clear it
+    if (headerFmt === "IMAGE" || headerFmt === "VIDEO") {
+      setHeaderMediaUrl(exampleHeaderUrl);
+    } else {
+      setHeaderMediaUrl("");
+    }
     const comps: WhatsappComponent[] = template.all_component ?? [];
 
     const indices = comps
@@ -197,6 +213,23 @@ export default function Footer() {
     // BODY
     const params = Object.entries(varInputs).map(([_, v]) => ({ type: "text" as const, text: v }));
     const payload: any[] = [];
+    const headerComp = comps.find((c) => c.type === "HEADER");
+    const headerFmt = (headerComp?.format || "").toUpperCase(); // "IMAGE" | "VIDEO" | "TEXT" | ...
+
+    if ((headerFmt === "IMAGE" || headerFmt === "VIDEO") && headerMediaUrl.trim()) {
+      // WhatsApp Cloud API template component for media header:
+      // { type: "header", parameters: [{ type: "image"|"video", image|video: { link: "https://..." } }] }
+      const mediaKey = headerFmt === "IMAGE" ? "image" : "video";
+      payload.push({
+        type: "header",
+        parameters: [
+          {
+            type: mediaKey,
+            [mediaKey]: { link: headerMediaUrl.trim() },
+          },
+        ],
+      });
+    }
     if (params.length) payload.push({ type: "body" as const, parameters: params });
 
     // BUTTONS
@@ -499,6 +532,7 @@ export default function Footer() {
           setVarInputs({});
           setButtonInputs({ thumbnail_product_retailer_id: "", title: "", product_items: "" });
           setUrlInputs({});
+          setHeaderMediaUrl(""); // reset media URL
         }}
       >
         <Box
@@ -555,11 +589,49 @@ export default function Footer() {
               <Typography variant="h6" sx={{ mb: 2 }}>
                 Fill Template Variables
               </Typography>
+
+              {/* Body preview */}
               <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mb: 2, opacity: 0.8 }}>
                 {selectedTemplate.all_component?.find((c: any) => c.type === "BODY")?.text || ""}
               </Typography>
 
-              <Box sx={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 2 }}>
+              {/* Media Header URL (only for IMAGE/VIDEO) */}
+              {(() => {
+                const headerComp = selectedTemplate.all_component?.find((c: any) => c.type === "HEADER");
+                const fmt = (headerComp?.format || "").toUpperCase();
+                if (fmt !== "IMAGE" && fmt !== "VIDEO") return null;
+
+                // Example from either key: header_handle or header_handler
+                const exampleUrl =
+                  headerComp?.example?.header_handle?.[0] ??
+                  headerComp?.example?.header_handler?.[0] ??
+                  "";
+
+                // If user hasn't typed anything yet but example exists, show it as value
+                const value = headerMediaUrl || exampleUrl;
+
+                return (
+                  <Box sx={{ mt: 1 }}>
+                    <Typography sx={{ color: "#fff", mb: 1 }}>
+                      {fmt === "IMAGE" ? "Header Image URL" : "Header Video URL"}
+                    </Typography>
+                    <Input
+                      placeholder={fmt === "IMAGE" ? "https://…(image link)" : "https://…(video link)"}
+                      value={value}
+                      onChange={(e) => setHeaderMediaUrl(e.target.value)}
+                      style={{ background: "transparent", color: "#fff" }}
+                    />
+                    {exampleUrl && (
+                      <Typography variant="caption" sx={{ display: "block", mt: 0.5, opacity: 0.7 }}>
+                        Example detected: {exampleUrl}
+                      </Typography>
+                    )}
+                  </Box>
+                );
+              })()}
+
+              {/* Variables for BODY {{n}} */}
+              <Box sx={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 2, mt: 2 }}>
                 {Object.entries(varInputs).map(([i, v]) => (
                   <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                     <Typography sx={{ width: 120, color: "#fff" }}>{`{{${i}}}`}</Typography>
@@ -572,52 +644,54 @@ export default function Footer() {
                   </Box>
                 ))}
 
+                {/* MPM button params */}
                 {selectedTemplate.all_component
                   ?.find((c: any) => c.type === "BUTTONS")
                   ?.buttons?.some((b: any) => b.type.toLowerCase() === "mpm") && (
-                  <>
-                    <Typography sx={{ color: "#fff", mt: 2 }}>MPM Button Action Parameters</Typography>
-                    <Input
-                      placeholder="Thumbnail Product Retailer ID"
-                      value={buttonInputs.thumbnail_product_retailer_id}
-                      onChange={(e) =>
-                        setButtonInputs((b) => ({ ...b, thumbnail_product_retailer_id: e.target.value }))
-                      }
-                      style={{ background: "transparent", color: "#fff" }}
-                    />
-                    <Input
-                      placeholder="Section Title"
-                      value={buttonInputs.title}
-                      onChange={(e) => setButtonInputs((b) => ({ ...b, title: e.target.value }))}
-                      style={{ background: "transparent", color: "#fff" }}
-                    />
-                    <Input
-                      placeholder="Product Items (comma-separated)"
-                      value={buttonInputs.product_items}
-                      onChange={(e) => setButtonInputs((b) => ({ ...b, product_items: e.target.value }))}
-                      style={{ background: "transparent", color: "#fff" }}
-                    />
-                  </>
-                )}
+                    <>
+                      <Typography sx={{ color: "#fff", mt: 2 }}>MPM Button Action Parameters</Typography>
+                      <Input
+                        placeholder="Thumbnail Product Retailer ID"
+                        value={buttonInputs.thumbnail_product_retailer_id}
+                        onChange={(e) =>
+                          setButtonInputs((b) => ({ ...b, thumbnail_product_retailer_id: e.target.value }))
+                        }
+                        style={{ background: "transparent", color: "#fff" }}
+                      />
+                      <Input
+                        placeholder="Section Title"
+                        value={buttonInputs.title}
+                        onChange={(e) => setButtonInputs((b) => ({ ...b, title: e.target.value }))}
+                        style={{ background: "transparent", color: "#fff" }}
+                      />
+                      <Input
+                        placeholder="Product Items (comma-separated)"
+                        value={buttonInputs.product_items}
+                        onChange={(e) => setButtonInputs((b) => ({ ...b, product_items: e.target.value }))}
+                        style={{ background: "transparent", color: "#fff" }}
+                      />
+                    </>
+                  )}
 
+                {/* URL button params */}
                 {selectedTemplate.all_component
                   ?.find((c: any) => c.type === "BUTTONS")
                   ?.buttons?.some((b: any) => b.type.toLowerCase() === "url") && (
-                  <>
-                    <Typography sx={{ color: "#fff", mt: 2 }}>URL Button Parameters</Typography>
-                    {Object.entries(urlInputs).map(([i, v]) => (
-                      <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                        <Typography sx={{ width: 120, color: "#fff" }}>{`{{${i}}}`}</Typography>
-                        <Input
-                          placeholder="Enter value"
-                          value={v}
-                          onChange={(e) => setUrlInputs((old) => ({ ...old, [i]: e.target.value }))}
-                          style={{ background: "transparent", color: "#fff" }}
-                        />
-                      </Box>
-                    ))}
-                  </>
-                )}
+                    <>
+                      <Typography sx={{ color: "#fff", mt: 2 }}>URL Button Parameters</Typography>
+                      {Object.entries(urlInputs).map(([i, v]) => (
+                        <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                          <Typography sx={{ width: 120, color: "#fff" }}>{`{{${i}}}`}</Typography>
+                          <Input
+                            placeholder="Enter value"
+                            value={v}
+                            onChange={(e) => setUrlInputs((old) => ({ ...old, [i]: e.target.value }))}
+                            style={{ background: "transparent", color: "#fff" }}
+                          />
+                        </Box>
+                      ))}
+                    </>
+                  )}
               </Box>
 
               <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>

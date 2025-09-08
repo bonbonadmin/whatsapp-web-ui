@@ -32,7 +32,7 @@ export const lightTheme: DefaultTheme = {
     scrollBtnBoxShadow: "0 1px 1px 0 rgba(0, 0, 0, 0.06), 0 2px 5px 0 rgba(0, 0, 0, 0.2)",
     profileBoxShadow: "rgba(0, 0, 0, 0.08) 0px 1px 3px 0px",
     profileHeadingColor: "rgb(0, 150, 136)",
-    profileActionColor: "rgb(223, 51, 51)",
+    profileActionColor: "rgba(151, 159, 0, 1)",
   },
   common: {
     borderColor: "#dadada",

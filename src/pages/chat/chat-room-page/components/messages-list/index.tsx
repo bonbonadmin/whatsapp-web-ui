@@ -192,19 +192,18 @@ const SingleMessage = forwardRef(
 
           <ChatMessageFiller />
           <ChatMessageFooter>
-            <span>{message.timestamp}</span>
+            <span title={message.fullTimestamp || ""}>{message.timestamp}</span>
             {!message.isOpponent && (
               <Icon
                 id={
                   message.messageStatus === "failed"
                     ? "cross"
                     : message.messageStatus === "delivered" || message.messageStatus === "read"
-                    ? "doubleTick"
-                    : "singleTick"
+                      ? "doubleTick"
+                      : "singleTick"
                 }
-                className={`chat__msg-status-icon ${
-                  message.messageStatus === "read" ? "chat__msg-status-icon--blue" : ""
-                }`}
+                className={`chat__msg-status-icon ${message.messageStatus === "read" ? "chat__msg-status-icon--blue" : ""
+                  }`}
               />
             )}
           </ChatMessageFooter>

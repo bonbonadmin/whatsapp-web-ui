@@ -10,6 +10,7 @@ export type Message = {
   isOpponent: boolean;
   messageType?: string;
   mediaLocation?: string;
+  fullTimestamp?: string;
 };
 
 export type MessageResponse = {

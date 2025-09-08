@@ -1,3 +1,4 @@
+import { useChatContext } from "pages/chat/context/chat";
 import Icon from "common/components/icons";
 import {
   AboutItem,
@@ -34,8 +35,12 @@ function formatEventDate(iso?: string) {
 }
 
 export default function ProfileSection(props: ProfileSectionProps) {
-  const { name, image, phoneNumber, events  } = props;
+  const { name, image, phoneNumber, events } = props;
+  const chatCtx = useChatContext();
 
+  const handleLoadAll = () => {
+    chatCtx.reloadMessages(-1); // 👈 ask provider to fetch ALL messages
+  };
   // console.log("Test", phoneNumber);
 
   return (
@@ -75,7 +80,7 @@ export default function ProfileSection(props: ProfileSectionProps) {
 
       <Section>
         <ul>
-            {events?.length
+          {events?.length
             ? events.map((e, i) => (
               <AboutItem key={`${e.event_name}-${e.started_at}-${i}`}>
                 {e.event_name} — {formatEventDate(e.started_at)}
@@ -90,8 +95,8 @@ export default function ProfileSection(props: ProfileSectionProps) {
         <Icon id="block" className="icon" />
         <ActionText>Block</ActionText>
       </ActionSection> */}
-      <ActionSection>
-        <Icon id="thumbsDown" className="icon" />
+      <ActionSection onClick={handleLoadAll} style={{ cursor: "pointer" }}>
+        <Icon id="sync" className="icon" />
         <ActionText>Load all chats</ActionText>
       </ActionSection>
       {/* <ActionSection>
