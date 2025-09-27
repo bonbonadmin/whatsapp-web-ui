@@ -23,18 +23,11 @@ export const App = styled.div`
 
 export const Message = styled.p`
   display: none;
-
-  @media screen and (max-width: 500px) {
-    padding-top: 200px;
-    text-align: center;
-    font-size: 1.2rem;
-    display: block;
-  }
 `;
 
 export const Content = styled.div`
   width: 100%;
-  height: 100vh;
+  height: 100dvh;
   padding-bottom: env(safe-area-inset-bottom);
   padding-top: env(safe-area-inset-top);
   max-width: 1450px;
@@ -43,15 +36,10 @@ export const Content = styled.div`
   position: relative;
   z-index: 100;
   display: flex;
-  overflow-y: auto;
+  overflow-y: hidden;
   overflow-x: hidden;
   
-
-  @media screen and (max-width: 500px) {
-    display: none;
-  }
-
   @media screen and (max-width: 1050px) {
-    height: calc(100vh - 40px);
+    height: 100dvh;
   }
 `;

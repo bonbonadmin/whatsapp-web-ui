@@ -23,6 +23,8 @@ import {
   Loader,
   SidebarContainer,
   ThemeIconContainer,
+  DrawerOverlay,
+  OpenInboxFab,
 } from "./styles";
 import ToggleSearch from "../search-toggle";
 import Modal from "@mui/material/Modal";
@@ -53,6 +55,21 @@ const pick = <T,>(obj: any, keys: string[], fallback?: T): T | undefined =>
 
 type WaLine = { id: string; number?: string };
 
+/** Mobile-only hamburger for the header, if you want it later
+const HeaderHamburger = styled.button`
+  display: none;
+  @media (max-width: 767px) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 10px;
+  }
+`;
+*/
+
 // ------------------------------
 // Component
 // ------------------------------
@@ -70,6 +87,9 @@ export default function Sidebar() {
   const [waLines, setWaLines] = useState<WaLine[]>([]);
   const [selectedWaId, setSelectedWaId] = useState<string>("");
 
+  // mobile drawer open state
+  const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
+
   // headers helper — ALWAYS a Record<string,string>
   const waHeaders = useMemo<Record<string, string>>(() => {
     const h: Record<string, string> = {};
@@ -77,16 +97,12 @@ export default function Sidebar() {
     return h;
   }, [selectedWaId]);
 
-  // 🔹 Reusable change handler: set state, persist, set axios default header, and fetch inbox
+  // 🔹 Reusable change handler
   const onChangeLine = useCallback(
     (id: string) => {
       setSelectedWaId(id);
       localStorage.setItem("wa:selectedId", id);
-
-      // Set global axios default header so all axios requests include waId
       axios.defaults.headers.common["x-wa-id"] = id;
-
-      // ensure we’re not in "unread only" mode, then fetch based on current search text
       chatCtx.onToggleSearch(false);
       chatCtx.onSearch(chatCtx.searchText || "");
     },
@@ -95,83 +111,84 @@ export default function Sidebar() {
 
   // Theme-aware select with custom caret
   const LineSelectWrap = styled.div`
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  margin-right: 8px;
-`;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    margin-right: 8px;
+  `;
 
   const LineSelect = styled.select<{ $mode: "light" | "dark" }>`
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
 
-  min-width: 100px;
-  max-width: 200px;
-  padding: 8px 36px 8px 12px;
-  border-radius: 10px;
-  border: 1px solid
-    ${({ $mode }) => ($mode === "light" ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.25)")};
-  background: ${({ $mode }) =>
-      $mode === "light" ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.06)"};
-  color: ${({ $mode }) => ($mode === "light" ? "#1f2937" : "#e5e7eb")};
-  outline: none;
-  transition: box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
-
-  &:hover {
-    border-color: ${({ $mode }) =>
-      $mode === "light" ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.38)"};
-  }
-
-  &:focus {
-    box-shadow: 0 0 0 3px
-      ${({ $mode }) => ($mode === "light" ? "rgba(59,130,246,0.35)" : "rgba(96,165,250,0.35)")};
-    border-color: ${({ $mode }) =>
-      $mode === "light" ? "rgba(59,130,246,0.9)" : "rgba(96,165,250,0.9)"};
-  }
-
-  /* Make options readable in both modes (note: some browsers limit option styling) */
-  & > option {
+    min-width: 100px;
+    max-width: 200px;
+    padding: 8px 36px 8px 12px;
+    border-radius: 10px;
+    border: 1px solid
+      ${({ $mode }) =>
+        $mode === "light" ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.25)"};
     background: ${({ $mode }) =>
-      $mode === "light" ? "#ffffff" : "#1f2937"}; /* white / gray-800 */
-    color: ${({ $mode }) => ($mode === "light" ? "#111827" : "#e5e7eb")}; /* gray-900 / gray-200 */
-  }
-`;
+      $mode === "light"
+        ? "rgba(255,255,255,0.85)"
+        : "rgba(255,255,255,0.06)"};
+    color: ${({ $mode }) => ($mode === "light" ? "#1f2937" : "#e5e7eb")};
+    outline: none;
+    transition: box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
+
+    &:hover {
+      border-color: ${({ $mode }) =>
+        $mode === "light" ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.38)"};
+    }
+
+    &:focus {
+      box-shadow: 0 0 0 3px
+        ${({ $mode }) =>
+          $mode === "light"
+            ? "rgba(59,130,246,0.35)"
+            : "rgba(96,165,250,0.35)"};
+      border-color: ${({ $mode }) =>
+        $mode === "light"
+          ? "rgba(59,130,246,0.9)"
+          : "rgba(96,165,250,0.9)"};
+    }
+
+    & > option {
+      background: ${({ $mode }) => ($mode === "light" ? "#ffffff" : "#1f2937")};
+      color: ${({ $mode }) => ($mode === "light" ? "#111827" : "#e5e7eb")};
+    }
+  `;
 
   const Caret = styled.span<{ $mode: "light" | "dark" }>`
-  pointer-events: none;
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  width: 16px;
-  height: 16px;
-  transform: translateY(-50%);
-  display: inline-block;
+    pointer-events: none;
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    transform: translateY(-50%);
+    display: inline-block;
 
-  /* simple SVG chevron so it adapts to theme color */
-  background-image: ${({ $mode }) =>
+    background-image: ${({ $mode }) =>
       `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none' stroke='${encodeURIComponent(
         $mode === "light" ? "#374151" : "#d1d5db"
       )}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 8 10 12 14 8'/></svg>")`};
-  background-repeat: no-repeat;
-  background-position: center;
-  opacity: 0.9;
-`;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 0.9;
+  `;
 
-  // 🔹 Fetch WA lines on mount and pick default (first one or stored one), then fetch inbox
+  // 🔹 Fetch WA lines on mount (with local cache)
   useEffect(() => {
     const cached = localStorage.getItem("wa:ids");
     const applyLines = (lines: WaLine[]) => {
       setWaLines(lines);
-
-      // restore or set first id as default
       const storedId = localStorage.getItem("wa:selectedId") || lines[0]?.id || "";
       setSelectedWaId(storedId);
-
       if (storedId) {
         localStorage.setItem("wa:selectedId", storedId);
-        axios.defaults.headers.common["x-wa-id"] = storedId; // make BE see it
-        // kick an initial inbox load
+        axios.defaults.headers.common["x-wa-id"] = storedId;
         chatCtx.onSearch("");
       }
     };
@@ -181,12 +198,11 @@ export default function Sidebar() {
         const lines = JSON.parse(cached) as WaLine[];
         if (Array.isArray(lines) && lines.length) {
           applyLines(lines);
-          return; // ✅ no network call
+          return;
         }
-      } catch { }
+      } catch {}
     }
 
-    // Fallback: fetch once and cache
     (async () => {
       try {
         const res = await fetch(`${baseUrl}/wa/ids`);
@@ -201,16 +217,16 @@ export default function Sidebar() {
         delete axios.defaults.headers.common["x-wa-id"];
       }
     })();
-    // empty deps => run only once
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // open chat, keep waId in URL
+  // open chat, keep waId in URL; close the drawer on mobile
   const handleChangeChat = (chat: Inbox) => {
     chatCtx.onChangeChat(chat);
     chatCtx.onFirstOpenChat(true);
     const q = selectedWaId ? `?waId=${encodeURIComponent(selectedWaId)}` : "";
     navigate("/" + chat.participantId + q);
+    setIsMobileOpen(false);
   };
 
   const handleLogout = () => {
@@ -312,7 +328,7 @@ export default function Sidebar() {
       }
       const res = await fetch(`${baseUrl}/template-update`, {
         method: "GET",
-        headers: waHeaders, // send selected waId
+        headers: waHeaders,
       });
       const json = await res.json();
       setUpdateMessage(json?.message ?? "Done");
@@ -323,116 +339,158 @@ export default function Sidebar() {
     }
   };
 
+  // Close drawer with ESC key (mobile external keyboard support)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsMobileOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
-    <SidebarContainer customStyles={{ overflow: "hidden" }}>
-      <Header>
-        {/* <ImageWrapper><img src="/assets/images/profile.png" alt="" /></ImageWrapper> */}
-        <Actions>
-          {/* WA selector (left of Logout) */}
-          <LineSelectWrap>
-            <LineSelect
-              $mode={theme.mode}
-              aria-label="Select WhatsApp line"
-              value={selectedWaId}
-              onChange={(e) => onChangeLine(e.target.value)}
-            >
-              {waLines.length === 0 && <option value="">No WA lines</option>}
-              {waLines.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.number ? `${l.number} · ${l.id}` : l.id}
-                </option>
-              ))}
-            </LineSelect>
-            <Caret $mode={theme.mode} />
-          </LineSelectWrap>
-
-          <button
-            aria-label="Logout"
-            onClick={handleLogout}
-            style={{ background: "none", border: "none", cursor: "pointer" }}
-          >
-            <Icon id="logout" className="icon" />
-          </button>
-          <button
-            aria-label="Update Templates"
-            onClick={handleTemplateUpdate}
-            style={{ background: "none", border: "none", cursor: "pointer" }}
-          >
-            <Icon id="sync" className="icon" />
-          </button>
-          <ThemeIconContainer onClick={handleChangeThemeMode}>
-            {theme.mode === "light" ? <BsMoon /> : <BsFillMoonFill />}
-          </ThemeIconContainer>
-        </Actions>
-      </Header>
-
-      {/* <SidebarAlert /> */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "0 8px" }}>
-        <div style={{ flex: 1 }}>
-          <SearchField />
-        </div>
-        <div>
-          <ToggleSearch />
-        </div>
-      </div>
-
-      <ContactContainer id="scrollableDiv" style={{ overflow: "auto", height: "80vh" }}>
-        <InfiniteScroll
-          dataLength={sortedInbox.length}
-          next={chatCtx.loadMore}
-          hasMore={chatCtx.hasMore}
-          loader={<Loader>Loading..</Loader>}
-          endMessage={<EndMessage>No more chats</EndMessage>}
-          scrollableTarget="scrollableDiv"
-        >
-          {sortedInbox.map((inbox) => (
-            <InboxContact
-              key={inbox.id}
-              inbox={inbox}
-              isActive={inbox.id === chatCtx.activeChat?.id}
-              onChangeChat={handleChangeChat}
-              onTogglePin={togglePin}
-            />
-          ))}
-        </InfiniteScroll>
-      </ContactContainer>
-
-      <Modal
-        open={showUpdateModal}
-        onClose={() => setShowUpdateModal(false)}
-        aria-labelledby="update-templates-title"
-        aria-describedby="update-templates-description"
+    <>
+      {/* Open FAB only visible on mobile */}
+      <OpenInboxFab
+        aria-label="Open chats"
+        onClick={() => setIsMobileOpen(true)}
+        title="Open chats"
       >
-        <Box
-          sx={{
-            position: "absolute" as const,
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            bgcolor: "#323739",
-            border: "2px solid #000",
-            boxShadow: 24,
-            p: 4,
-            borderRadius: 2,
-            color: "#fff",
-            minWidth: 300,
-          }}
-        >
-          <Typography id="update-templates-title" variant="h6" sx={{ mb: 2 }}>
-            Template Update
-          </Typography>
-          <Typography id="update-templates-description" sx={{ mb: 3 }}>
-            {updateMessage}
-          </Typography>
-          <Button
-            variant="contained"
-            onClick={() => setShowUpdateModal(false)}
-            sx={{ backgroundColor: "#555" }}
+        <Icon id="menu" className="icon" />
+      </OpenInboxFab>
+
+      {/* Dark overlay behind the drawer on mobile */}
+      <DrawerOverlay
+        $isOpen={isMobileOpen}
+        onClick={() => setIsMobileOpen(false)}
+        aria-hidden={!isMobileOpen}
+      />
+
+      <SidebarContainer customStyles={{ overflow: "hidden" }} $isOpen={isMobileOpen}>
+        <Header>
+          {/* You can add a hamburger here for consistency if you like */}
+          <Actions>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <div>
+                <LineSelectWrap>
+                  <LineSelect
+                    $mode={theme.mode}
+                    aria-label="Select WhatsApp line"
+                    value={selectedWaId}
+                    onChange={(e) => onChangeLine(e.target.value)}
+                  >
+                    {waLines.length === 0 && <option value="">No WA lines</option>}
+                    {waLines.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.number ? `${l.number} · ${l.id}` : l.id}
+                      </option>
+                    ))}
+                  </LineSelect>
+                  <Caret $mode={theme.mode} />
+                </LineSelectWrap>
+              </div>
+
+              <button
+                aria-label="Logout"
+                onClick={handleLogout}
+                style={{ background: "none", border: "none", cursor: "pointer" }}
+              >
+                <Icon id="logout" className="icon" />
+              </button>
+
+              <button
+                aria-label="Update Templates"
+                onClick={handleTemplateUpdate}
+                style={{ background: "none", border: "none", cursor: "pointer" }}
+              >
+                <Icon id="sync" className="icon" />
+              </button>
+
+              <ThemeIconContainer onClick={handleChangeThemeMode}>
+                {theme.mode === "light" ? <BsMoon /> : <BsFillMoonFill />}
+              </ThemeIconContainer>
+
+              {/* Close button (only visible on mobile via CSS if you add it) */}
+              <button
+                aria-label="Close"
+                onClick={() => setIsMobileOpen(false)}
+                style={{ background: "none", border: "none", cursor: "pointer", display: "none" }}
+                className="drawer-close-mobile"
+              >
+                <Icon id="close" className="icon" />
+              </button>
+            </div>
+          </Actions>
+        </Header>
+
+        {/* <SidebarAlert /> */}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "0 8px" }}>
+          <div style={{ flex: 1 }}>
+            <SearchField />
+          </div>
+          <div>
+            <ToggleSearch />
+          </div>
+        </div>
+
+        <ContactContainer id="scrollableDiv">
+          <InfiniteScroll
+            dataLength={sortedInbox.length}
+            next={chatCtx.loadMore}
+            hasMore={chatCtx.hasMore}
+            loader={<Loader>Loading..</Loader>}
+            endMessage={<EndMessage>No more chats</EndMessage>}
+            scrollableTarget="scrollableDiv"
           >
-            Close
-          </Button>
-        </Box>
-      </Modal>
-    </SidebarContainer>
+            {sortedInbox.map((inbox) => (
+              <InboxContact
+                key={inbox.id}
+                inbox={inbox}
+                isActive={inbox.id === chatCtx.activeChat?.id}
+                onChangeChat={handleChangeChat}
+                onTogglePin={togglePin}
+              />
+            ))}
+          </InfiniteScroll>
+        </ContactContainer>
+
+        <Modal
+          open={showUpdateModal}
+          onClose={() => setShowUpdateModal(false)}
+          aria-labelledby="update-templates-title"
+          aria-describedby="update-templates-description"
+        >
+          <Box
+            sx={{
+              position: "absolute" as const,
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              bgcolor: "#323739",
+              border: "2px solid #000",
+              boxShadow: 24,
+              p: 4,
+              borderRadius: 2,
+              color: "#fff",
+              minWidth: 300,
+            }}
+          >
+            <Typography id="update-templates-title" variant="h6" sx={{ mb: 2 }}>
+              Template Update
+            </Typography>
+            <Typography id="update-templates-description" sx={{ mb: 3 }}>
+              {updateMessage}
+            </Typography>
+            <Button
+              variant="contained"
+              onClick={() => setShowUpdateModal(false)}
+              sx={{ backgroundColor: "#555" }}
+            >
+              Close
+            </Button>
+          </Box>
+        </Modal>
+      </SidebarContainer>
+    </>
   );
 }
