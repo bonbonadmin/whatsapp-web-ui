@@ -9,6 +9,7 @@ import {
   Message,
   MessagePayload,
   MessageResponse,
+  ToolApiItem,
 } from "../chat-room-page/components/messages-list/data/get-messages";
 
 type BookingEvent = { event_name: string; started_at: string };
