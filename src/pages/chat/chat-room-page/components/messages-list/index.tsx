@@ -1,9 +1,9 @@
 import { CSSProperties, forwardRef, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useParams } from "react-router-dom"; // ⬅️ useLocation added
+import { useLocation, useParams } from "react-router-dom";
 
 import Icon from "common/components/icons";
 import useScrollToBottom from "./hooks/useScrollToBottom";
-import { getMessages, Message, MessageResponse } from "./data/get-messages";
+import { Message } from "./data/get-messages";
 import {
   ChatMessage,
   ChatMessageFiller,
@@ -16,6 +16,82 @@ import {
 } from "./styles";
 import { useChatContext } from "pages/chat/context/chat";
 
+/* ----------------------- Helpers ----------------------- */
+
+function pretty(obj: any) {
+  try {
+    if (typeof obj === "string") return JSON.stringify(JSON.parse(obj), null, 2);
+    return JSON.stringify(obj, null, 2);
+  } catch {
+    return String(obj ?? "");
+  }
+}
+
+/* ----------------------- Tool Row ----------------------- */
+
+type ToolEventRowProps = {
+  id: string;
+  isHighlighted?: boolean;
+  timestamp?: string;
+  functionName?: string;
+  functionArgs?: string | null;
+  chatResponseItem?: any;
+  toolOutput?: any;
+};
+
+const ToolEventRow = forwardRef<HTMLDivElement, ToolEventRowProps>((toolProps, ref) => {
+  const { id, isHighlighted, timestamp, functionName, functionArgs, chatResponseItem, toolOutput } =
+    toolProps;
+
+  return (
+    <div
+      id={id}
+      ref={ref}
+      style={{
+        margin: "8px 0",
+        padding: "10px 12px",
+        borderRadius: 8,
+        background: isHighlighted ? "#FFF8E1" : "#F5F7FB",
+        border: isHighlighted ? "1px solid #FFD700" : "1px solid #E4E8F0",
+        fontFamily:
+          'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+      }}
+    >
+      <div style={{ fontSize: 12, color: "#556", marginBottom: 6 }}>
+        <strong>🔧 Tool call</strong>
+        {functionName ? (
+          <>
+            : <code>{functionName}</code>
+          </>
+        ) : null}
+        {timestamp ? <span style={{ float: "right", color: "#889" }}>{timestamp}</span> : null}
+      </div>
+
+      <details open>
+        <summary style={{ cursor: "pointer", userSelect: "none" }}>Chat response (raw)</summary>
+        <pre style={{ margin: "6px 0 0", fontSize: 12 }}>{pretty(chatResponseItem)}</pre>
+      </details>
+
+      {functionArgs ? (
+        <details style={{ marginTop: 8 }}>
+          <summary style={{ cursor: "pointer", userSelect: "none" }}>Arguments</summary>
+          <pre style={{ marginTop: 6, fontSize: 12 }}>{pretty(functionArgs)}</pre>
+        </details>
+      ) : null}
+
+      {toolOutput ? (
+        <details style={{ marginTop: 8 }}>
+          <summary style={{ cursor: "pointer", userSelect: "none" }}>Tool Output</summary>
+          <pre style={{ marginTop: 6, fontSize: 12 }}>{pretty(toolOutput)}</pre>
+        </details>
+      ) : null}
+    </div>
+  );
+});
+ToolEventRow.displayName = "ToolEventRow";
+
+/* ----------------------- Props ----------------------- */
+
 type MessagesListProps = {
   onShowBottomIcon: Function;
   listMessages: Message[];
@@ -26,11 +102,20 @@ type MessagesListProps = {
   selectedSearchId?: string;
 };
 
-export default function MessagesList(props: MessagesListProps) {
-  const { onShowBottomIcon, shouldScrollToBottom, testToBottom, selectedSearchId, isSearchOpen, lastMessageId } = props;
+/* ----------------------- Component ----------------------- */
+
+export default function MessagesList({
+  onShowBottomIcon,
+  shouldScrollToBottom,
+  testToBottom,
+  selectedSearchId,
+  isSearchOpen,
+  lastMessageId,
+  listMessages,
+}: MessagesListProps) {
   const chatCtx = useChatContext();
   const params = useParams();
-  const location = useLocation(); // ⬅️
+  const location = useLocation();
 
   const { containerRef, lastMessageRef } = useScrollToBottom(
     onShowBottomIcon,
@@ -97,28 +182,49 @@ export default function MessagesList(props: MessagesListProps) {
       </EncryptionMessage>
 
       <MessageGroup>
-        {props.listMessages.map((message, index) => (
-          <SingleMessage
-            key={message.id}
-            message={message}
-            ref={(el) => {
-              messageRefs.current[message.id] = el as HTMLDivElement | null;
-            }}
-            isHighlighted={isSearchOpen && message.id === selectedSearchId}
-            mediaUrl={fullMediaUrl(message.mediaLocation)} // ⬅️ pass computed URL with waId
-          />
-        ))}
+        {listMessages.map((message) => {
+          const saveRef = (el: HTMLDivElement | null) => {
+            messageRefs.current[message.id] = el;
+          };
+
+          // Render tool calls WITHOUT chat bubble
+          if (message.messageType === "tool") {
+            return (
+              <ToolEventRow
+                key={message.id}
+                id={message.id}
+                ref={saveRef}
+                isHighlighted={isSearchOpen && message.id === selectedSearchId}
+                timestamp={message.timestamp}
+                functionName={message.functionName}
+                functionArgs={message.functionArgs}
+                chatResponseItem={message.chatResponseItem}
+                toolOutput={message.toolOutput}
+              />
+            );
+          }
+
+          // Default: normal chat bubble (text/image/document/template)
+          return (
+            <SingleMessage
+              key={message.id}
+              message={message}
+              ref={saveRef}
+              isHighlighted={isSearchOpen && message.id === selectedSearchId}
+              mediaUrl={fullMediaUrl(message.mediaLocation)}
+            />
+          );
+        })}
       </MessageGroup>
     </Container>
   );
 }
 
+/* ----------------------- Single Message (unchanged) ----------------------- */
+
 // Extend SingleMessage props to receive computed mediaUrl
 const SingleMessage = forwardRef(
-  (
-    props: { message: Message; isHighlighted?: boolean; mediaUrl?: string },
-    ref: any
-  ) => {
+  (props: { message: Message; isHighlighted?: boolean; mediaUrl?: string }, ref: any) => {
     const { message, isHighlighted, mediaUrl = "" } = props;
     const [isModalOpen, setModalOpen] = useState(false);
 
@@ -199,11 +305,12 @@ const SingleMessage = forwardRef(
                   message.messageStatus === "failed"
                     ? "cross"
                     : message.messageStatus === "delivered" || message.messageStatus === "read"
-                      ? "doubleTick"
-                      : "singleTick"
+                    ? "doubleTick"
+                    : "singleTick"
                 }
-                className={`chat__msg-status-icon ${message.messageStatus === "read" ? "chat__msg-status-icon--blue" : ""
-                  }`}
+                className={`chat__msg-status-icon ${
+                  message.messageStatus === "read" ? "chat__msg-status-icon--blue" : ""
+                }`}
               />
             )}
           </ChatMessageFooter>
@@ -221,6 +328,9 @@ const SingleMessage = forwardRef(
     );
   }
 );
+SingleMessage.displayName = "SingleMessage";
+
+/* ----------------------- Modal Styles ----------------------- */
 
 const modalStyles: Record<string, CSSProperties> = {
   overlay: {

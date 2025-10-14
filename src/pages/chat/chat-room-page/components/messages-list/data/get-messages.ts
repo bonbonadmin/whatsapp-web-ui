@@ -11,6 +11,11 @@ export type Message = {
   messageType?: string;
   mediaLocation?: string;
   fullTimestamp?: string;
+  functionName?: string;
+  functionArgs?: string | null;
+  chatResponseItem?: any;
+  toolOutput?: any;
+  createdAtISO?: string;
 };
 
 export type MessageResponse = {
@@ -26,6 +31,19 @@ export type MessageResponse = {
   participant_message_status: string;
   display_phone_number: string;
   created_at: Date;
+};
+
+export type ToolApiItem = {
+  id: string;                     // e.g. "tool-<tools.id>-<tool_call_id>"
+  tools_row_id: number;
+  created_at: string;
+  updated_at: string;
+  message_type: 'tool';
+  function_name: string;
+  function_args: string | null;
+  chat_response_item?: any;       // raw OpenAI tool item
+  tool_output?: any;              // matched output by tool_call_id
+  status?: string | null;
 };
 
 export type MessageTextPayload = {

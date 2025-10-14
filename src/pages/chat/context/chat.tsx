@@ -113,6 +113,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
           { params: { days }, headers }
         );
 
+        // ===== booking events (unchanged) =====
         const rawEvents = Array.isArray(data?.bookingEvents) ? data.bookingEvents : [];
         const events: BookingEvent[] = rawEvents
           .map((e: any) => ({
@@ -122,38 +123,65 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
           .filter((e) => e.event_name && e.started_at);
         setBookingEvents(events.length ? events : undefined);
 
-        const rows: MessageResponse[] = Array.isArray(data?.data) ? data.data : [];
+        // ===== helpers for timestamps =====
         const shortTs = (d: Date) => {
           const sameDay = new Date().toDateString() === d.toDateString();
           if (sameDay) {
             return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
           }
-          // DD/MM
           const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
-          return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
+          return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`; // DD/MM
         };
-
         const fullTs = (d: Date) => {
           const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
           return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
         };
 
-        const mapped: Message[] = rows.map((v) => {
+        // ===== messages -> UI =====
+        const rows: MessageResponse[] = Array.isArray(data?.data) ? data.data : [];
+        const msgList: Message[] = rows.map((v) => {
           const created = new Date(v.created_at);
           return {
             id: v.id,
             body: v.message_text,
             date: created.toLocaleDateString(),
-            timestamp: shortTs(created),       // compact (original) display
-            fullTimestamp: fullTs(created),    // hover tooltip text
+            timestamp: shortTs(created),
+            fullTimestamp: fullTs(created),
             messageStatus: v.participant_message_status,
             isOpponent: v.from_me === 0,
             messageType: v.message_type,
             mediaLocation: v.media_location,
+            createdAtISO: created.toISOString(),
           };
         });
 
-        setMessages(mapped);
+        // ===== tools -> UI (no bubble) =====
+        const toolRows: ToolApiItem[] = Array.isArray(data?.tools) ? data.tools : [];
+        const toolList: Message[] = toolRows.map((t) => {
+          const created = new Date(t.created_at);
+          return {
+            id: String(t.id),
+            body: "",                         // rendered by ToolEventRow
+            date: created.toLocaleDateString(),
+            timestamp: shortTs(created),
+            fullTimestamp: fullTs(created),
+            messageStatus: "",               // not applicable
+            isOpponent: false,
+            messageType: "tool",
+            createdAtISO: created.toISOString(),
+            functionName: t.function_name,
+            functionArgs: t.function_args,
+            chatResponseItem: t.chat_response_item,
+            toolOutput: t.tool_output,
+          };
+        });
+
+        // ===== merge + sort by time =====
+        const merged = [...msgList, ...toolList].sort((a, b) =>
+          String(a.createdAtISO).localeCompare(String(b.createdAtISO))
+        );
+
+        setMessages(merged);
       } catch (error) {
         console.error("Error fetching messages list:", error);
       }
