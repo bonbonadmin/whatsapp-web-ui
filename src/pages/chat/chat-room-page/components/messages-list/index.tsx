@@ -16,75 +16,93 @@ import {
 } from "./styles";
 import { useChatContext } from "pages/chat/context/chat";
 
-/* ----------------------- Helpers ----------------------- */
-
-function pretty(obj: any) {
-  try {
-    if (typeof obj === "string") return JSON.stringify(JSON.parse(obj), null, 2);
-    return JSON.stringify(obj, null, 2);
-  } catch {
-    return String(obj ?? "");
-  }
-}
-
-/* ----------------------- Tool Row ----------------------- */
+/* ----------------------- Minimal Tool Row (with collapse) ----------------------- */
 
 type ToolEventRowProps = {
   id: string;
   isHighlighted?: boolean;
-  timestamp?: string;
   functionName?: string;
   functionArgs?: string | null;
-  chatResponseItem?: any;
   toolOutput?: any;
 };
 
-const ToolEventRow = forwardRef<HTMLDivElement, ToolEventRowProps>((toolProps, ref) => {
-  const { id, isHighlighted, timestamp, functionName, functionArgs, chatResponseItem, toolOutput } =
-    toolProps;
+const ToolEventRow = forwardRef<HTMLDivElement, ToolEventRowProps>((p, ref) => {
+  const [argsOpen, setArgsOpen] = useState(false);
+  const [outOpen, setOutOpen] = useState(false);
+
+  const argText =
+    typeof p.functionArgs === "string"
+      ? p.functionArgs
+      : p.functionArgs
+      ? JSON.stringify(p.functionArgs)
+      : "";
+
+  const outText =
+    typeof p.toolOutput === "string"
+      ? p.toolOutput
+      : p.toolOutput?.output != null
+      ? String(p.toolOutput.output)
+      : p.toolOutput
+      ? JSON.stringify(p.toolOutput)
+      : "";
+
+  const collapsedBlock: CSSProperties = {
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    display: "block",
+  };
+  const expandedBlock: CSSProperties = {
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-word",
+    display: "block",
+  };
+  const smallBtn: CSSProperties = {
+    marginLeft: 8,
+    fontSize: 11,
+    padding: "2px 6px",
+    borderRadius: 4,
+    border: "1px solid #d0d7de",
+    background: "#fff",
+    cursor: "pointer",
+  };
+
+  // show "" when empty string
+  const renderWithQuotes = (s: string) => (s === "" ? '""' : s);
 
   return (
     <div
-      id={id}
+      id={p.id}
       ref={ref}
       style={{
         margin: "8px 0",
         padding: "10px 12px",
         borderRadius: 8,
-        background: isHighlighted ? "#FFF8E1" : "#F5F7FB",
-        border: isHighlighted ? "1px solid #FFD700" : "1px solid #E4E8F0",
-        fontFamily:
-          'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+        background: p.isHighlighted ? "#FFF8E1" : "#F5F7FB",
+        border: p.isHighlighted ? "1px solid #FFD700" : "1px solid #E4E8F0",
+        fontSize: 12,
+        lineHeight: 1.5,
       }}
     >
-      <div style={{ fontSize: 12, color: "#556", marginBottom: 6 }}>
-        <strong>🔧 Tool call</strong>
-        {functionName ? (
-          <>
-            : <code>{functionName}</code>
-          </>
-        ) : null}
-        {timestamp ? <span style={{ float: "right", color: "#889" }}>{timestamp}</span> : null}
+      <div style={{ marginBottom: 6 }}>
+        <strong>Tool call:</strong> <code>{p.functionName || ""}</code>
       </div>
 
-      <details open>
-        <summary style={{ cursor: "pointer", userSelect: "none" }}>Chat response (raw)</summary>
-        <pre style={{ margin: "6px 0 0", fontSize: 12 }}>{pretty(chatResponseItem)}</pre>
-      </details>
+      <div style={{ marginTop: 4 }}>
+        <strong>Arguments:</strong>
+        <button type="button" style={smallBtn} onClick={() => setArgsOpen((v) => !v)}>
+          {argsOpen ? "Collapse" : "Expand"}
+        </button>
+        <code style={argsOpen ? expandedBlock : collapsedBlock}>{renderWithQuotes(argText)}</code>
+      </div>
 
-      {functionArgs ? (
-        <details style={{ marginTop: 8 }}>
-          <summary style={{ cursor: "pointer", userSelect: "none" }}>Arguments</summary>
-          <pre style={{ marginTop: 6, fontSize: 12 }}>{pretty(functionArgs)}</pre>
-        </details>
-      ) : null}
-
-      {toolOutput ? (
-        <details style={{ marginTop: 8 }}>
-          <summary style={{ cursor: "pointer", userSelect: "none" }}>Tool Output</summary>
-          <pre style={{ marginTop: 6, fontSize: 12 }}>{pretty(toolOutput)}</pre>
-        </details>
-      ) : null}
+      <div style={{ marginTop: 4 }}>
+        <strong>Output:</strong>
+        <button type="button" style={smallBtn} onClick={() => setOutOpen((v) => !v)}>
+          {outOpen ? "Collapse" : "Expand"}
+        </button>
+        <code style={outOpen ? expandedBlock : collapsedBlock}>{renderWithQuotes(outText)}</code>
+      </div>
     </div>
   );
 });
@@ -147,7 +165,6 @@ export default function MessagesList({
     const qs = new URLSearchParams(location.search);
     const fromQuery = qs.get("waId");
     if (fromQuery && fromQuery.trim()) return fromQuery.trim();
-    // fallback to saved selection (Sidebar stores this)
     return localStorage.getItem("wa:selectedId") || "";
   }, [location.search]);
 
@@ -157,21 +174,16 @@ export default function MessagesList({
     if (!selectedWaId) return url;
     const hasQuery = url.includes("?");
     const sep = hasQuery ? "&" : "?";
-    // avoid duplicate waId
     if (/\bwaId=/.test(url)) return url;
     return `${url}${sep}waId=${encodeURIComponent(selectedWaId)}`;
   };
 
   const fullMediaUrl = (mediaLocation?: string): string => {
     if (!mediaLocation) return "";
-    if (isAbsolute(mediaLocation)) {
-      // absolute (e.g., S3) — don't touch
-      return mediaLocation;
-    }
-    // relative path served by your backend — append waId
+    if (isAbsolute(mediaLocation)) return mediaLocation;
     const abs = `${baseURL}/${mediaLocation.replace(/^\/+/, "")}`;
     return withWaId(abs);
-  };
+    };
 
   return (
     <Container ref={containerRef}>
@@ -187,7 +199,7 @@ export default function MessagesList({
             messageRefs.current[message.id] = el;
           };
 
-          // Render tool calls WITHOUT chat bubble
+          // Minimal tool row (no chat bubble)
           if (message.messageType === "tool") {
             return (
               <ToolEventRow
@@ -195,16 +207,14 @@ export default function MessagesList({
                 id={message.id}
                 ref={saveRef}
                 isHighlighted={isSearchOpen && message.id === selectedSearchId}
-                timestamp={message.timestamp}
                 functionName={message.functionName}
                 functionArgs={message.functionArgs}
-                chatResponseItem={message.chatResponseItem}
                 toolOutput={message.toolOutput}
               />
             );
           }
 
-          // Default: normal chat bubble (text/image/document/template)
+          // Default chat bubble
           return (
             <SingleMessage
               key={message.id}
@@ -222,13 +232,11 @@ export default function MessagesList({
 
 /* ----------------------- Single Message (unchanged) ----------------------- */
 
-// Extend SingleMessage props to receive computed mediaUrl
 const SingleMessage = forwardRef(
   (props: { message: Message; isHighlighted?: boolean; mediaUrl?: string }, ref: any) => {
     const { message, isHighlighted, mediaUrl = "" } = props;
     const [isModalOpen, setModalOpen] = useState(false);
 
-    // Nice filename for documents
     const fileName = message.mediaLocation
       ? message.mediaLocation.substring(message.mediaLocation.lastIndexOf("/") + 1)
       : "";
@@ -316,7 +324,6 @@ const SingleMessage = forwardRef(
           </ChatMessageFooter>
         </ChatMessage>
 
-        {/* Modal for Image Preview */}
         {isModalOpen && (
           <div style={modalStyles.overlay} onClick={() => setModalOpen(false)}>
             <div style={modalStyles.modalContent} onClick={(e) => e.stopPropagation()}>
