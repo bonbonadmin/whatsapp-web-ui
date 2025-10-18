@@ -90,6 +90,8 @@ export default function Footer() {
   const [showAIModal, setShowAIModal] = useState(false);
   const [aiRole, setAiRole] = useState<"user" | "assistant">("user");
   const [aiMessage, setAiMessage] = useState("");
+  const [aiMode, setAiMode] = useState<"message" | "trigger">("message");
+  const [toolName, setToolName] = useState<"" | "send_rsvp" | "get_rsvp_rule">("");
   const [showPresetModal, setShowPresetModal] = useState(false);
   const [presetMessages, setPresetMessages] = useState<PresetMessage[]>([]);
 
@@ -305,19 +307,33 @@ export default function Footer() {
 
   const sendAI = () => {
     if (!chatCtx.activeChat) return;
+
+    let textMessage: string;
+    let messageRole: "user" | "assistant" = "user";
+
+    if (aiMode === "trigger") {
+      if (!toolName) return; // or show toast
+      textMessage = `<<RUN_TOOL: ${toolName}>>`; // name only
+    } else {
+      textMessage = aiMessage;
+      messageRole = aiRole;
+    }
+
     fetch(`${baseUrl}/message/add-thread-message`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...waHeaders },
       body: JSON.stringify({
         phoneNumber: chatCtx.activeChat.participantId,
-        textMessage: aiMessage,
-        messageRole: aiRole,
+        textMessage,
+        messageRole,
       }),
     })
       .then(() => {
         setShowAIModal(false);
         setAiMessage("");
         setAiRole("user");
+        setAiMode("message");
+        setToolName("");
       })
       .catch(console.error);
   };
@@ -474,49 +490,60 @@ export default function Footer() {
           setAiRole("user");
         }}
       >
-        <Box
-          sx={{
-            ...modalStyle,
-            width: 500,
-            bgcolor: "#323739",
-            color: "#fff",
-            p: 3,
-            borderRadius: 2,
-            display: "flex",
-            flexDirection: "column",
-            gap: 2,
-          }}
-        >
+        <Box sx={{ ...modalStyle, width: 500, bgcolor: "#323739", color: "#fff", p: 3, borderRadius: 2, display: "flex", flexDirection: "column", gap: 2 }}>
           <Typography variant="h6">Manual AI</Typography>
 
+          {/* Mode */}
           <FormControl component="fieldset" variant="standard">
-            <FormLabel component="legend" sx={{ color: "#ccc" }}>
-              Post as
-            </FormLabel>
-            <RadioGroup
-              row
-              value={aiRole}
-              onChange={(e) => setAiRole(e.target.value as "user" | "assistant")}
-            >
-              <FormControlLabel value="user" control={<Radio />} label="User" sx={{ color: "#fff" }} />
-              <FormControlLabel
-                value="assistant"
-                control={<Radio />}
-                label="Assistant"
-                sx={{ color: "#fff" }}
-              />
+            <FormLabel component="legend" sx={{ color: "#ccc" }}>Mode</FormLabel>
+            <RadioGroup row value={aiMode} onChange={(e) => setAiMode(e.target.value as "message" | "trigger")}>
+              <FormControlLabel value="message" control={<Radio />} label="Message" sx={{ color: "#fff" }} />
+              <FormControlLabel value="trigger" control={<Radio />} label="Trigger tool" sx={{ color: "#fff" }} />
             </RadioGroup>
           </FormControl>
 
-          <TextArea
-            value={aiMessage}
-            placeholder="Type your AI prompt here…"
-            onChange={(e) => setAiMessage(e.target.value)}
-            style={{ minHeight: "120px", color: "#fff" }}
-          />
+          {/* Message mode */}
+          {aiMode === "message" && (
+            <>
+              <FormControl component="fieldset" variant="standard">
+                <FormLabel component="legend" sx={{ color: "#ccc" }}>Post as</FormLabel>
+                <RadioGroup row value={aiRole} onChange={(e) => setAiRole(e.target.value as "user" | "assistant")}>
+                  <FormControlLabel value="user" control={<Radio />} label="User" sx={{ color: "#fff" }} />
+                  <FormControlLabel value="assistant" control={<Radio />} label="Assistant" sx={{ color: "#fff" }} />
+                </RadioGroup>
+              </FormControl>
+
+              <TextArea
+                value={aiMessage}
+                placeholder="Type your AI prompt here…"
+                onChange={(e) => setAiMessage(e.target.value)}
+                style={{ minHeight: "120px", color: "#fff" }}
+              />
+            </>
+          )}
+
+          {/* Trigger mode */}
+          {aiMode === "trigger" && (
+            <>
+              <FormControl component="fieldset" variant="standard">
+                <FormLabel component="legend" sx={{ color: "#ccc" }}>Function</FormLabel>
+                <RadioGroup row value={toolName} onChange={(e) => setToolName(e.target.value as "send_rsvp" | "get_rsvp_rule" | "")}>
+                  <FormControlLabel value="send_rsvp" control={<Radio />} label="send_rsvp" sx={{ color: "#fff" }} />
+                  <FormControlLabel value="get_rsvp_rule" control={<Radio />} label="get_rsvp_rule" sx={{ color: "#fff" }} />
+                </RadioGroup>
+              </FormControl>
+
+              <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                Will send <code>{`<<RUN_TOOL: ${toolName || "..." }>>`}</code> to the Assistant.
+              </Typography>
+            </>
+          )}
 
           <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-            <SendMessageButton onClick={sendAI} disabled={!aiMessage.trim()}>
+            <SendMessageButton
+              onClick={sendAI}
+              disabled={aiMode === "message" ? !aiMessage.trim() : !toolName}
+            >
               <Icon id="send" />
             </SendMessageButton>
           </Box>
