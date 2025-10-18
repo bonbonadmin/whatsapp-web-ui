@@ -58,6 +58,12 @@ export default function ProfileSection(props: ProfileSectionProps) {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string>("");
 
+  const waManualLink = useMemo(() => {
+    const digits = String(phoneNumber || "").replace(/[^\d]/g, ""); // keep numbers only
+    if (!digits) return "";
+    return `https://api.whatsapp.com/send/?phone=${encodeURIComponent(digits)}`;
+  }, [phoneNumber]);
+
   // waId from active chat
   const waFromChat = useMemo<string>(() => {
     const ac: any = chatCtx?.activeChat || {};
@@ -86,6 +92,7 @@ export default function ProfileSection(props: ProfileSectionProps) {
     chatCtx.reloadMessages(-1); // 👈 ask provider to fetch ALL messages
   };
   console.log("Test", phoneNumber);
+  
 
   useEffect(() => {
     let cancelled = false;
@@ -261,6 +268,27 @@ export default function ProfileSection(props: ProfileSectionProps) {
         </div>
       </Section>
       {/* --- End Handover to Session --- */}
+
+      {/* --- Manual Message Link --- */}
+      <Section>
+        {waManualLink ? (
+          <a
+            href={waManualLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "inline-block",
+              padding: "8px 0",
+              textDecoration: "underline",
+              fontSize: 14,
+            }}
+          >
+            Manual Message
+          </a>
+        ) : (
+          <span style={{ fontSize: 14, opacity: 0.7 }}>Manual Message</span>
+        )}
+      </Section>
 
       {/* <ActionSection>
         <Icon id="block" className="icon" />
