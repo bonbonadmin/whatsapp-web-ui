@@ -27,29 +27,23 @@ export default function ChatRoomPage() {
     shouldScrollToBottom,
     participantMessages,
   } = useChatRoom();
-  useNavigateToChat(activeInbox);
-  // console.log("testt", participantMessages);
-  const scrollButton = React.useRef<HTMLButtonElement>(null);
 
+  useNavigateToChat(activeInbox);
+
+  const scrollButton = React.useRef<HTMLButtonElement>(null);
   const chatCtx = useChatContext();
+
   useEffect(() => {
     setShouldScrollToBottom(true);
-  }, []);
-  // useEffect(() => {
-  //   if (chatCtx.firstOpenChat) {
-  //     scrollButton.current?.click();
-  //     setShouldScrollToBottom(true);
-  //     // chatCtx.onFirstOpenChat(false);
-  //   }
-  // // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [chatCtx.firstOpenChat])
+  }, [setShouldScrollToBottom]);
+
+  const [selectedSearchId, setSelectedSearchId] = useState<string>("");
+
   useEffect(() => {
     if (!isSearchOpen) {
       setSelectedSearchId("");
     }
   }, [isSearchOpen]);
-
-  const [selectedSearchId, setSelectedSearchId] = useState<string>("");
 
   const handleClickSearch = (id: string) => {
     setSelectedSearchId(id);
@@ -58,7 +52,8 @@ export default function ChatRoomPage() {
   if (participantMessages.length === 0) {
     return (
       <ChatLayout>
-        <Container>
+        {/* Drive layout/open-close via data-profile attr */}
+        <Container data-profile={isProfileOpen ? "open" : "closed"}>
           <Body>
             <Background />
             <Header
@@ -71,9 +66,9 @@ export default function ChatRoomPage() {
             <div
               style={{
                 flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
               <p>No messages</p>
@@ -83,29 +78,37 @@ export default function ChatRoomPage() {
             </FooterContainer>
           </Body>
 
+          {/* Search sidebar stays as-is */}
           <Sidebar title="Search" isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)}>
             <SearchSection onClickSearch={handleClickSearch} isSearchActive={isSearchOpen} />
           </Sidebar>
-          <Sidebar
-            title="Contact Info"
-            isOpen={isProfileOpen}
-            onClose={() => setIsProfileOpen(false)}
-          >
-            <ProfileSection
-              name={activeInbox?.name ?? ""}
-              image={activeInbox?.image ?? ""}
-              phoneNumber={activeInbox?.participantId ?? ""}
-              events={chatCtx.bookingEvents}
-            />
-          </Sidebar>
+
+          {/* Profile sidebar wrapped in a flex item that the parent sizes via [data-profile-panel] */}
+          <div data-profile-panel>
+            <Sidebar
+              title="Contact Info"
+              isOpen={isProfileOpen}
+              onClose={() => setIsProfileOpen(false)}
+            >
+              <ProfileSection
+                name={activeInbox?.name ?? ""}
+                image={activeInbox?.image ?? ""}
+                phoneNumber={activeInbox?.participantId ?? ""}
+                events={chatCtx.bookingEvents}
+              />
+            </Sidebar>
+          </div>
         </Container>
       </ChatLayout>
     );
   }
+
   const lastMessage = participantMessages[participantMessages.length - 1].id;
+
   return (
     <ChatLayout>
-      <Container>
+      {/* Drive layout/open-close via data-profile attr */}
+      <Container data-profile={isProfileOpen ? "open" : "closed"}>
         <Body>
           <Background />
           <Header
@@ -141,21 +144,27 @@ export default function ChatRoomPage() {
             <Footer />
           </FooterContainer>
         </Body>
+
+        {/* Search sidebar stays as-is */}
         <Sidebar title="Search" isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)}>
           <SearchSection onClickSearch={handleClickSearch} isSearchActive={isSearchOpen} />
         </Sidebar>
-        <Sidebar
-          title="Contact Info"
-          isOpen={isProfileOpen}
-          onClose={() => setIsProfileOpen(false)}
-        >
-          <ProfileSection
-            name={activeInbox?.name ?? ""}
-            image={activeInbox?.image ?? ""}
-            phoneNumber={activeInbox?.participantId ?? ""}
-            events={chatCtx.bookingEvents}
-          />
-        </Sidebar>
+
+        {/* Profile sidebar wrapped in a flex item that the parent sizes via [data-profile-panel] */}
+        <div data-profile-panel>
+          <Sidebar
+            title="Contact Info"
+            isOpen={isProfileOpen}
+            onClose={() => setIsProfileOpen(false)}
+          >
+            <ProfileSection
+              name={activeInbox?.name ?? ""}
+              image={activeInbox?.image ?? ""}
+              phoneNumber={activeInbox?.participantId ?? ""}
+              events={chatCtx.bookingEvents}
+            />
+          </Sidebar>
+        </div>
       </Container>
     </ChatLayout>
   );
