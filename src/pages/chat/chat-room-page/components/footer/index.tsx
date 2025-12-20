@@ -88,7 +88,7 @@ export default function Footer() {
   const [showWebhookModal, setShowWebhookModal] = useState(false);
   const [webhookMessage, setWebhookMessage] = useState("");
   const [showAIModal, setShowAIModal] = useState(false);
-  const [aiRole, setAiRole] = useState<"user" | "assistant">("user");
+  const [aiRole, setAiRole] = useState<"user" | "assistant" | "developer">("user");
   const [aiMessage, setAiMessage] = useState("");
   const [aiMode, setAiMode] = useState<"message" | "trigger">("message");
   const [toolName, setToolName] = useState<"" | "send_rsvp" | "get_rsvp_rule">("");
@@ -309,7 +309,7 @@ export default function Footer() {
     if (!chatCtx.activeChat) return;
 
     let textMessage: string;
-    let messageRole: "user" | "assistant" = "user";
+    let messageRole: "user" | "assistant" | "developer" = "user";
 
     if (aiMode === "trigger") {
       if (!toolName) return; // or show toast
@@ -507,9 +507,10 @@ export default function Footer() {
             <>
               <FormControl component="fieldset" variant="standard">
                 <FormLabel component="legend" sx={{ color: "#ccc" }}>Post as</FormLabel>
-                <RadioGroup row value={aiRole} onChange={(e) => setAiRole(e.target.value as "user" | "assistant")}>
+                <RadioGroup row value={aiRole} onChange={(e) => setAiRole(e.target.value as "user" | "assistant" | "developer")}>
                   <FormControlLabel value="user" control={<Radio />} label="User" sx={{ color: "#fff" }} />
                   <FormControlLabel value="assistant" control={<Radio />} label="Assistant" sx={{ color: "#fff" }} />
+                  <FormControlLabel value="developer" control={<Radio />} label="Developer" sx={{ color: "#fff" }} />
                 </RadioGroup>
               </FormControl>
 

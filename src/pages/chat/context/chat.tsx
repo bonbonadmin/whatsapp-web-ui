@@ -59,6 +59,8 @@ const initialValue: ChatContextProp = {
   reloadMessages() { throw new Error(); },
 };
 
+const LS_ACTIVE_CHAT = "chat:activeParticipantId";
+
 const fmtTs = (d: Date) => {
   const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -87,6 +89,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
   const lastUpdateRef = useRef(lastUpdate);
   const toggleSearchRef = useRef(toggleSearch);
   const isFetchInboxRef = useRef(isFetchInbox);
+  const didRestoreActiveRef = useRef(false);
 
   useEffect(() => { activeChatRef.current = activeChat; }, [activeChat]);
   useEffect(() => { lastUpdateRef.current = lastUpdate; }, [lastUpdate]);
@@ -261,6 +264,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
 
   const handleChangeChat = useCallback((chat: Inbox) => {
     setActiveChat(chat);
+    localStorage.setItem(LS_ACTIVE_CHAT, chat.participantId); // ✅ persist
     fetchMessages(chat.participantId);
   }, [fetchMessages]);
 
@@ -286,7 +290,6 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
   }, [baseURL, fetchMessages]);
 
   const handleSearch = useCallback(async (query: string) => {
-    setInbox([]);
     setSearchText(query);
     setCurrentPage(1);
     setHasMore(true);
@@ -296,7 +299,8 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
 
   const handleToggleSearch = useCallback((toggle: boolean) => {
     setToggleSearch(toggle);
-    setInbox([]);
+    setCurrentPage(1);
+    setHasMore(true);
     fetchInbox(searchText.trim() !== "" ? searchText : undefined, 1);
   }, [fetchInbox, searchText]);
 
@@ -317,7 +321,6 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
         const response = await axios.post(`${baseURL}/event-check-inbox`, payload);
         const changed = !!response.data?.data;
         if (changed) {
-          setInbox([]);
           await fetchInbox(searchText.trim() !== "" ? searchText : undefined, 1);
         }
       } catch (error) {
@@ -337,6 +340,25 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (didRestoreActiveRef.current) return;
+    if (!inbox.length) return;
+
+    const stored = localStorage.getItem(LS_ACTIVE_CHAT) || "";
+    if (!stored) {
+      didRestoreActiveRef.current = true;
+      return;
+    }
+
+    const found = inbox.find((x) => x.participantId === stored);
+    if (found) {
+      setActiveChat(found);
+      fetchMessages(found.participantId);
+    }
+
+    didRestoreActiveRef.current = true;
+  }, [inbox, fetchMessages]);
 
   const handleFileUpload = useCallback(
     async (file: File, msg: string, type: string, nonManual: boolean) => {

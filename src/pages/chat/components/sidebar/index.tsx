@@ -1,15 +1,21 @@
 // /pages/chat/components/sidebar/index.tsx
-import { useEffect, useMemo, useState, useCallback } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+  useLayoutEffect,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { BsFillMoonFill, BsMoon } from "react-icons/bs";
 import styled from "styled-components";
 import InfiniteScroll from "react-infinite-scroll-component";
 import axios from "axios";
 
-import SidebarAlert from "./alert";
 import InboxContact from "./contacts";
-import OptionsMenu from "../option-menu";
 import SearchField from "../search-field";
+import ToggleSearch from "../search-toggle";
 import Icon from "common/components/icons";
 import { useAppTheme } from "common/theme";
 import { Inbox } from "common/types/common.type";
@@ -19,14 +25,13 @@ import {
   ContactContainer,
   EndMessage,
   Header,
-  ImageWrapper,
   Loader,
   SidebarContainer,
   ThemeIconContainer,
   DrawerOverlay,
   OpenInboxFab,
 } from "./styles";
-import ToggleSearch from "../search-toggle";
+
 import Modal from "@mui/material/Modal";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -55,20 +60,75 @@ const pick = <T,>(obj: any, keys: string[], fallback?: T): T | undefined =>
 
 type WaLine = { id: string; number?: string };
 
-/** Mobile-only hamburger for the header, if you want it later
-const HeaderHamburger = styled.button`
-  display: none;
-  @media (max-width: 767px) {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 6px 10px;
+// ------------------------------
+// Styled (module scope)
+// ------------------------------
+const LineSelectWrap = styled.div`
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-right: 8px;
+`;
+
+const LineSelect = styled.select<{ $mode: "light" | "dark" }>`
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+
+  min-width: 100px;
+  max-width: 200px;
+  padding: 8px 36px 8px 12px;
+  border-radius: 10px;
+  border: 1px solid
+    ${({ $mode }) =>
+      $mode === "light" ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.25)"};
+  background: ${({ $mode }) =>
+    $mode === "light" ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.06)"};
+  color: ${({ $mode }) => ($mode === "light" ? "#1f2937" : "#e5e7eb")};
+  outline: none;
+  transition: box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
+
+  &:hover {
+    border-color: ${({ $mode }) =>
+      $mode === "light" ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.38)"};
+  }
+
+  &:focus {
+    box-shadow: 0 0 0 3px
+      ${({ $mode }) =>
+        $mode === "light"
+          ? "rgba(59,130,246,0.35)"
+          : "rgba(96,165,250,0.35)"};
+    border-color: ${({ $mode }) =>
+      $mode === "light"
+        ? "rgba(59,130,246,0.9)"
+        : "rgba(96,165,250,0.9)"};
+  }
+
+  & > option {
+    background: ${({ $mode }) => ($mode === "light" ? "#ffffff" : "#1f2937")};
+    color: ${({ $mode }) => ($mode === "light" ? "#111827" : "#e5e7eb")};
   }
 `;
-*/
+
+const Caret = styled.span<{ $mode: "light" | "dark" }>`
+  pointer-events: none;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  display: inline-block;
+
+  background-image: ${({ $mode }) =>
+    `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none' stroke='${encodeURIComponent(
+      $mode === "light" ? "#374151" : "#d1d5db"
+    )}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 8 10 12 14 8'/></svg>")`};
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.9;
+`;
 
 // ------------------------------
 // Component
@@ -97,100 +157,98 @@ export default function Sidebar() {
     return h;
   }, [selectedWaId]);
 
+  // ------------------------------
+  // ContactContainer scroll memory
+  // ------------------------------
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  const SCROLL_KEY = useMemo(() => {
+    const wa = selectedWaId || "default";
+    return `chat:sidebarScrollTop:${wa}`;
+  }, [selectedWaId]);
+
+  const saveScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    sessionStorage.setItem(SCROLL_KEY, String(el.scrollTop || 0));
+  }, [SCROLL_KEY]);
+
+  const restoreScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const saved = sessionStorage.getItem(SCROLL_KEY);
+    if (!saved) return;
+
+    const n = Number(saved);
+    if (Number.isNaN(n)) return;
+
+    requestAnimationFrame(() => {
+      if (!scrollRef.current) return;
+      scrollRef.current.scrollTop = n;
+    });
+  }, [SCROLL_KEY]);
+
+  // Restore on mount
+  useEffect(() => {
+    restoreScroll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Restore when opening drawer (mobile)
+  useEffect(() => {
+    if (isMobileOpen) restoreScroll();
+  }, [isMobileOpen, restoreScroll]);
+
+  // Restore when WA line changes
+  useEffect(() => {
+    restoreScroll();
+  }, [selectedWaId, restoreScroll]);
+
+  // After list size changes (e.g. inbox refresh), re-apply saved scroll gently
+  useLayoutEffect(() => {
+    restoreScroll();
+  }, [restoreScroll, chatCtx.inbox?.length]);
+
   // 🔹 Reusable change handler
   const onChangeLine = useCallback(
     (id: string) => {
       setSelectedWaId(id);
       localStorage.setItem("wa:selectedId", id);
       axios.defaults.headers.common["x-wa-id"] = id;
+
+      // Keep UX stable: close search toggle (optional) then re-run search with current text
       chatCtx.onToggleSearch(false);
       chatCtx.onSearch(chatCtx.searchText || "");
+
+      // Restore scroll for this WA line (after inbox renders)
+      restoreScroll();
     },
-    [chatCtx]
+    [chatCtx, restoreScroll]
   );
-
-  // Theme-aware select with custom caret
-  const LineSelectWrap = styled.div`
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    margin-right: 8px;
-  `;
-
-  const LineSelect = styled.select<{ $mode: "light" | "dark" }>`
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-
-    min-width: 100px;
-    max-width: 200px;
-    padding: 8px 36px 8px 12px;
-    border-radius: 10px;
-    border: 1px solid
-      ${({ $mode }) =>
-        $mode === "light" ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.25)"};
-    background: ${({ $mode }) =>
-      $mode === "light"
-        ? "rgba(255,255,255,0.85)"
-        : "rgba(255,255,255,0.06)"};
-    color: ${({ $mode }) => ($mode === "light" ? "#1f2937" : "#e5e7eb")};
-    outline: none;
-    transition: box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
-
-    &:hover {
-      border-color: ${({ $mode }) =>
-        $mode === "light" ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.38)"};
-    }
-
-    &:focus {
-      box-shadow: 0 0 0 3px
-        ${({ $mode }) =>
-          $mode === "light"
-            ? "rgba(59,130,246,0.35)"
-            : "rgba(96,165,250,0.35)"};
-      border-color: ${({ $mode }) =>
-        $mode === "light"
-          ? "rgba(59,130,246,0.9)"
-          : "rgba(96,165,250,0.9)"};
-    }
-
-    & > option {
-      background: ${({ $mode }) => ($mode === "light" ? "#ffffff" : "#1f2937")};
-      color: ${({ $mode }) => ($mode === "light" ? "#111827" : "#e5e7eb")};
-    }
-  `;
-
-  const Caret = styled.span<{ $mode: "light" | "dark" }>`
-    pointer-events: none;
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    width: 16px;
-    height: 16px;
-    transform: translateY(-50%);
-    display: inline-block;
-
-    background-image: ${({ $mode }) =>
-      `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none' stroke='${encodeURIComponent(
-        $mode === "light" ? "#374151" : "#d1d5db"
-      )}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 8 10 12 14 8'/></svg>")`};
-    background-repeat: no-repeat;
-    background-position: center;
-    opacity: 0.9;
-  `;
 
   // 🔹 Fetch WA lines on mount (with local cache)
   useEffect(() => {
     const cached = localStorage.getItem("wa:ids");
+
     const applyLines = (lines: WaLine[]) => {
       setWaLines(lines);
-      const storedId = localStorage.getItem("wa:selectedId") || lines[0]?.id || "";
+
+      const storedId =
+        localStorage.getItem("wa:selectedId") || lines[0]?.id || "";
       setSelectedWaId(storedId);
+
       if (storedId) {
         localStorage.setItem("wa:selectedId", storedId);
         axios.defaults.headers.common["x-wa-id"] = storedId;
-        chatCtx.onSearch("");
+      } else {
+        delete axios.defaults.headers.common["x-wa-id"];
       }
+
+      // NOTE: do NOT force-clear/reload here.
+      // Let ChatProvider handle initial fetch / polling.
+      // If you *do* want to fetch immediately, do it via chatCtx.onSearch(...)
+      // after you update ChatProvider to not clear inbox.
     };
 
     if (cached) {
@@ -200,7 +258,9 @@ export default function Sidebar() {
           applyLines(lines);
           return;
         }
-      } catch {}
+      } catch {
+        // ignore and refetch
+      }
     }
 
     (async () => {
@@ -224,6 +284,7 @@ export default function Sidebar() {
   const handleChangeChat = (chat: Inbox) => {
     chatCtx.onChangeChat(chat);
     chatCtx.onFirstOpenChat(true);
+
     const q = selectedWaId ? `?waId=${encodeURIComponent(selectedWaId)}` : "";
     navigate("/" + chat.participantId + q);
     setIsMobileOpen(false);
@@ -263,16 +324,18 @@ export default function Sidebar() {
     });
   }, [chatCtx.inbox, pinOverlay]);
 
-  // Sort
+  // Sort (pinned first, then pinnedAt desc, then timestamp desc)
   const sortedInbox: Inbox[] = useMemo(() => {
     const arr = [...mergedInbox];
     arr.sort((a: any, b: any) => {
       const ap = a.isPinned ? 1 : 0;
       const bp = b.isPinned ? 1 : 0;
       if (ap !== bp) return bp - ap;
+
       const apin = toMillis(a.pinnedAt);
       const bpin = toMillis(b.pinnedAt);
       if (apin !== bpin) return bpin - apin;
+
       const at = toMillis(a.timestamp);
       const bt = toMillis(b.timestamp);
       return bt - at;
@@ -293,6 +356,7 @@ export default function Sidebar() {
         "Content-Type": "application/json",
         ...waHeaders,
       };
+
       const res = await fetch(
         `${baseUrl}/message-inbox/${encodeURIComponent(participantId)}/pin`,
         {
@@ -301,6 +365,7 @@ export default function Sidebar() {
           body: JSON.stringify({ isPinned: next }),
         }
       );
+
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
 
@@ -366,9 +431,11 @@ export default function Sidebar() {
         aria-hidden={!isMobileOpen}
       />
 
-      <SidebarContainer customStyles={{ overflow: "hidden" }} $isOpen={isMobileOpen}>
+      <SidebarContainer
+        customStyles={{ overflow: "hidden" }}
+        $isOpen={isMobileOpen}
+      >
         <Header>
-          {/* You can add a hamburger here for consistency if you like */}
           <Actions>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
               <div>
@@ -409,22 +476,18 @@ export default function Sidebar() {
               <ThemeIconContainer onClick={handleChangeThemeMode}>
                 {theme.mode === "light" ? <BsMoon /> : <BsFillMoonFill />}
               </ThemeIconContainer>
-
-              {/* Close button (only visible on mobile via CSS if you add it) */}
-              <button
-                aria-label="Close"
-                onClick={() => setIsMobileOpen(false)}
-                style={{ background: "none", border: "none", cursor: "pointer", display: "none" }}
-                className="drawer-close-mobile"
-              >
-                <Icon id="close" className="icon" />
-              </button>
             </div>
           </Actions>
         </Header>
 
-        {/* <SidebarAlert /> */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "0 8px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "0 8px",
+          }}
+        >
           <div style={{ flex: 1 }}>
             <SearchField />
           </div>
@@ -433,7 +496,11 @@ export default function Sidebar() {
           </div>
         </div>
 
-        <ContactContainer id="scrollableDiv">
+        <ContactContainer
+          id="scrollableDiv"
+          ref={scrollRef}
+          onScroll={saveScroll}
+        >
           <InfiniteScroll
             dataLength={sortedInbox.length}
             next={chatCtx.loadMore}
