@@ -290,7 +290,7 @@ export default function Footer() {
 
   const sendWebhook = () => {
     if (!chatCtx.activeChat) return;
-    fetch(`${baseUrl}/message/manual-webhook`, {
+    fetch(`${baseUrl}/message/manual-webhook-v2`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...waHeaders },
       body: JSON.stringify({
@@ -319,7 +319,7 @@ export default function Footer() {
       messageRole = aiRole;
     }
 
-    fetch(`${baseUrl}/message/add-thread-message`, {
+    fetch(`${baseUrl}/message/add-thread-message-v2`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...waHeaders },
       body: JSON.stringify({
