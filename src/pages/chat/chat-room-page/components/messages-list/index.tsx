@@ -34,17 +34,17 @@ const ToolEventRow = forwardRef<HTMLDivElement, ToolEventRowProps>((p, ref) => {
     typeof p.functionArgs === "string"
       ? p.functionArgs
       : p.functionArgs
-      ? JSON.stringify(p.functionArgs)
-      : "";
+        ? JSON.stringify(p.functionArgs)
+        : "";
 
   const outText =
     typeof p.toolOutput === "string"
       ? p.toolOutput
       : p.toolOutput?.output != null
-      ? String(p.toolOutput.output)
-      : p.toolOutput
-      ? JSON.stringify(p.toolOutput)
-      : "";
+        ? String(p.toolOutput.output)
+        : p.toolOutput
+          ? JSON.stringify(p.toolOutput)
+          : "";
 
   const collapsedBlock: CSSProperties = {
     whiteSpace: "nowrap",
@@ -183,7 +183,7 @@ export default function MessagesList({
     if (isAbsolute(mediaLocation)) return mediaLocation;
     const abs = `${baseURL}/${mediaLocation.replace(/^\/+/, "")}`;
     return withWaId(abs);
-    };
+  };
 
   return (
     <Container ref={containerRef}>
@@ -240,6 +240,16 @@ const SingleMessage = forwardRef(
     const fileName = message.mediaLocation
       ? message.mediaLocation.substring(message.mediaLocation.lastIndexOf("/") + 1)
       : "";
+
+    const isFailed = message.messageStatus === "failed";
+
+    const errorTitles = useMemo(() => {
+      if (!isFailed) return [];
+      const errs = Array.isArray((message as any).errors) ? (message as any).errors : [];
+      return errs
+        .map((e: any) => (typeof e?.title === "string" ? e.title.trim() : ""))
+        .filter(Boolean);
+    }, [isFailed, (message as any).errors]);
 
     return (
       <>
@@ -304,6 +314,21 @@ const SingleMessage = forwardRef(
             <span>{message.body}</span>
           )}
 
+          {isFailed && errorTitles.length > 0 && (
+            <div
+              style={{
+                marginTop: 6,
+                fontSize: 12,
+                lineHeight: 1.4,
+                color: "#b42318",
+                fontWeight: 600,
+                wordBreak: "break-word",
+              }}
+            >
+              {errorTitles.join(" · ")}
+            </div>
+          )}
+
           <ChatMessageFiller />
           <ChatMessageFooter>
             <span title={message.fullTimestamp || ""}>{message.timestamp}</span>
@@ -313,12 +338,11 @@ const SingleMessage = forwardRef(
                   message.messageStatus === "failed"
                     ? "cross"
                     : message.messageStatus === "delivered" || message.messageStatus === "read"
-                    ? "doubleTick"
-                    : "singleTick"
+                      ? "doubleTick"
+                      : "singleTick"
                 }
-                className={`chat__msg-status-icon ${
-                  message.messageStatus === "read" ? "chat__msg-status-icon--blue" : ""
-                }`}
+                className={`chat__msg-status-icon ${message.messageStatus === "read" ? "chat__msg-status-icon--blue" : ""
+                  }`}
               />
             )}
           </ChatMessageFooter>
