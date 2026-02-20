@@ -15,6 +15,12 @@ export type Message = {
   functionArgs?: string | null;
   chatResponseItem?: any;
   toolOutput?: any;
+  errors?: Array<{
+    title?: string;
+    message?: string;
+    code?: number;
+    error_data?: any;
+  }> | null;
   createdAtISO?: string;
 };
 
