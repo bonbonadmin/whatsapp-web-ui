@@ -241,6 +241,9 @@ const SingleMessage = forwardRef(
       ? message.mediaLocation.substring(message.mediaLocation.lastIndexOf("/") + 1)
       : "";
 
+    const participantStatus = String((message as any).participantMessageStatus ?? (message as any).participant_message_status ?? "")
+      .toLowerCase();
+
     const isFailed = message.messageStatus === "failed";
 
     const errorTitles = useMemo(() => {

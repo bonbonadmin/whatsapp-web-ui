@@ -15,6 +15,7 @@ export type Message = {
   functionArgs?: string | null;
   chatResponseItem?: any;
   toolOutput?: any;
+  participantMessageStatus?: string | null;
   errors?: Array<{
     title?: string;
     message?: string;

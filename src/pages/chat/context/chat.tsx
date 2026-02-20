@@ -142,7 +142,8 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
         };
 
         // ===== messages -> UI =====
-        const rows: MessageResponse[] = Array.isArray(data?.data) ? data.data : [];
+        const rows: any[] = Array.isArray(data?.data) ? data.data : [];
+        // const rows: MessageResponse[] = Array.isArray(data?.data) ? data.data : [];
         const msgList: Message[] = rows.map((v) => {
           const created = new Date(v.created_at);
           return {
@@ -152,6 +153,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
             timestamp: shortTs(created),
             fullTimestamp: fullTs(created),
             messageStatus: v.participant_message_status,
+            errors: v.errors ?? null,
             isOpponent: v.from_me === 0,
             messageType: v.message_type,
             mediaLocation: v.media_location,
