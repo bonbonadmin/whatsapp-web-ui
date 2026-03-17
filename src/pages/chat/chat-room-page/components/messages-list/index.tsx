@@ -131,11 +131,16 @@ const ToolEventRow = forwardRef(
       overflow: "hidden",
       textOverflow: "ellipsis",
       display: "block",
+      maxWidth: "100%",
+      minWidth: 0,
     };
     const expandedBlock: CSSProperties = {
       whiteSpace: "pre-wrap",
       wordBreak: "break-word",
+      overflowWrap: "anywhere",
       display: "block",
+      maxWidth: "100%",
+      minWidth: 0,
     };
     const smallBtn: CSSProperties = {
       marginLeft: 8,
@@ -161,16 +166,30 @@ const ToolEventRow = forwardRef(
           border: isHighlighted ? "1px solid #FFD700" : "1px solid #E4E8F0",
           fontSize: 12,
           lineHeight: 1.5,
+          width: "100%",
+          maxWidth: "100%",
+          minWidth: 0,
+          boxSizing: "border-box",
+          overflow: "hidden",
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
-          <div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+            marginBottom: 6,
+            flexWrap: "wrap",
+            minWidth: 0,
+          }}
+        >
+          <div style={{ minWidth: 0, overflowWrap: "anywhere" }}>
             <strong>Tool call:</strong> <code>{functionName || ""}</code>
           </div>
           <span style={{ color: "#667085", whiteSpace: "nowrap" }}>{timestamp}</span>
         </div>
 
-        <div style={{ marginTop: 4 }}>
+        <div style={{ marginTop: 4, minWidth: 0 }}>
           <strong>Arguments:</strong>
           <button type="button" style={smallBtn} onClick={() => setArgsOpen((value) => !value)}>
             {argsOpen ? "Collapse" : "Expand"}
@@ -180,7 +199,7 @@ const ToolEventRow = forwardRef(
           </code>
         </div>
 
-        <div style={{ marginTop: 4 }}>
+        <div style={{ marginTop: 4, minWidth: 0 }}>
           <strong>Output:</strong>
           <button type="button" style={smallBtn} onClick={() => setOutOpen((value) => !value)}>
             {outOpen ? "Collapse" : "Expand"}
