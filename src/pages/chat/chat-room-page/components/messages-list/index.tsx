@@ -153,6 +153,13 @@ const ToolEventRow = forwardRef(
     };
 
     const renderWithQuotes = (text: string) => (text === "" ? '""' : text);
+    const previewText = (text: string, limit: number = 280) => {
+      if (text.length <= limit) return renderWithQuotes(text);
+      return `${renderWithQuotes(text.slice(0, limit))}...`;
+    };
+
+    const renderedArgsText = argsOpen ? renderWithQuotes(argText) : previewText(argText);
+    const renderedOutText = outOpen ? renderWithQuotes(outText) : previewText(outText);
 
     return (
       <div
@@ -195,7 +202,7 @@ const ToolEventRow = forwardRef(
             {argsOpen ? "Collapse" : "Expand"}
           </button>
           <code style={argsOpen ? expandedBlock : collapsedBlock}>
-            {renderWithQuotes(argText)}
+            {renderedArgsText}
           </code>
         </div>
 
@@ -204,8 +211,14 @@ const ToolEventRow = forwardRef(
           <button type="button" style={smallBtn} onClick={() => setOutOpen((value) => !value)}>
             {outOpen ? "Collapse" : "Expand"}
           </button>
-          <code style={outOpen ? expandedBlock : collapsedBlock}>
-            {renderWithQuotes(outText)}
+          <code
+            style={{
+              ...(outOpen ? expandedBlock : collapsedBlock),
+              maxHeight: outOpen ? 240 : undefined,
+              overflowY: outOpen ? "auto" : "hidden",
+            }}
+          >
+            {renderedOutText}
           </code>
         </div>
       </div>
