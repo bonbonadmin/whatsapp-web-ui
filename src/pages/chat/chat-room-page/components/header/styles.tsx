@@ -21,6 +21,42 @@ export const Container = styled.div`
     width: 30px;
     height: 30px;
   }
+
+  @media screen and (max-width: 767px) {
+    height: auto;
+    min-height: 60px;
+    padding: 10px 12px;
+    background: rgba(20, 28, 35, 0.9);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+
+    .search-icon {
+      width: 22px;
+      height: 22px;
+    }
+  }
+`;
+
+export const BackButton = styled.button`
+  display: none;
+
+  @media screen and (max-width: 767px) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    margin-right: 8px;
+    border-radius: 999px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+
+    .icon {
+      width: 20px;
+      height: 20px;
+    }
+  }
 `;
 
 export const AvatarWrapper = styled.div`
@@ -42,6 +78,7 @@ export const Avatar = styled.img`
 export const ProfileWrapper = styled.div<{ onClick: any }>`
   flex: 1;
   cursor: pointer;
+  min-width: 0;
 `;
 
 export const profileStyles = css`
@@ -56,6 +93,11 @@ export const Name = styled.h2`
   margin-bottom: 2px;
 
   ${profileStyles}
+
+  @media screen and (max-width: 767px) {
+    font-size: 1rem;
+    font-weight: 600;
+  }
 `;
 
 export const Subtitle = styled.p`
@@ -63,6 +105,10 @@ export const Subtitle = styled.p`
   font-size: 0.75rem;
 
   ${profileStyles}
+
+  @media screen and (max-width: 767px) {
+    font-size: 0.72rem;
+  }
 `;
 
 export const Actions = styled.div`
@@ -72,6 +118,10 @@ export const Actions = styled.div`
 
   .action-menus-wrapper {
     z-index: 20;
+  }
+
+  @media screen and (max-width: 767px) {
+    margin-right: 0;
   }
 `;
 

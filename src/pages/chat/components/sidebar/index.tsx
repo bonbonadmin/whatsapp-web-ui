@@ -20,6 +20,9 @@ import {
   Header,
   ImageWrapper,
   Loader,
+  MobileHeaderCopy,
+  MobileHeaderTitle,
+  SearchArea,
   SidebarContainer,
   ThemeIconContainer,
 } from "./styles";
@@ -61,7 +64,8 @@ const pick = <T,>(obj: any, keys: string[], fallback?: T): T | undefined =>
 // ------------------------------
 // Component
 // ------------------------------
-export default function Sidebar() {
+export default function Sidebar(props: { mobileVisible?: boolean }) {
+  const { mobileVisible = true } = props;
   const theme = useAppTheme();
   const navigate = useNavigate();
   const chatCtx = useChatContext();
@@ -185,12 +189,17 @@ export default function Sidebar() {
 
   return (
     <SidebarContainer
+      data-mobile-visible={mobileVisible ? "true" : "false"}
       customStyles={{
         overflow: "hidden",
       }}
     >
       <Header>
-        <ImageWrapper>{/* <Avatar src="/assets/images/profile.png" /> */}</ImageWrapper>
+        <ImageWrapper>
+          <MobileHeaderCopy>
+            <MobileHeaderTitle>Chats</MobileHeaderTitle>
+          </MobileHeaderCopy>
+        </ImageWrapper>
         <Actions>
           <button
             aria-label="Logout"
@@ -213,16 +222,16 @@ export default function Sidebar() {
       </Header>
 
       {/* <SidebarAlert /> */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "0 8px" }}>
+      <SearchArea>
         <div style={{ flex: 1 }}>
           <SearchField />
         </div>
         <div>
           <ToggleSearch />
         </div>
-      </div>
+      </SearchArea>
 
-      <ContactContainer id="scrollableDiv" style={{ overflow: "auto", height: "80vh" }}>
+      <ContactContainer id="scrollableDiv">
         <InfiniteScroll
           dataLength={sortedInbox.length}
           next={chatCtx.loadMore}

@@ -8,6 +8,13 @@ export const Wrapper = styled.div`
   display: flex;
   align-items: center;
   /* should be refactor to one wrapper. using multiple places */
+
+  @media screen and (max-width: 767px) {
+    padding: 8px 10px;
+    height: auto;
+    min-height: 64px;
+    gap: 8px;
+  }
 `;
 
 export const iconCommonStyles = css`
@@ -23,6 +30,10 @@ export const AttachButton = styled.button`
 
   .icon {
     ${iconCommonStyles}
+  }
+
+  @media screen and (max-width: 767px) {
+    margin-left: 0;
   }
 `;
 
@@ -114,12 +125,26 @@ export const TextArea = styled.textarea`
   &:focus {
     outline: none;
   }
+
+  @media screen and (max-width: 767px) {
+    min-height: 42px;
+    max-height: 110px;
+    padding: 10px 12px;
+    margin-left: 0;
+    font-size: 0.92rem;
+    border-radius: 22px;
+  }
 `;
 
 export const ControlsWrapper = styled.div`
   display: flex;
   align-items: center;
   margin-left: auto;
+
+  @media screen and (max-width: 767px) {
+    margin-left: 0;
+    gap: 2px;
+  }
 `;
 
 export const SendMessageButton = styled.button`
@@ -131,5 +156,14 @@ export const SendMessageButton = styled.button`
     padding: 3px;
     border-radius: 50%;
     ${iconCommonStyles}
+  }
+
+  @media screen and (max-width: 767px) {
+    .icon {
+      width: 24px;
+      height: 24px;
+      margin-left: 4px;
+      margin-right: 4px;
+    }
   }
 `;

@@ -6,11 +6,16 @@ export const Container = styled.div`
   overflow-y: auto;
   overflow-x: hidden;
   padding: 1rem 5% 2rem;
+  min-height: 0;
 
   .icon {
     color: ${(props) => props.theme.common.subHeadingColor};
     margin-right: 0.3rem;
     margin-bottom: -1px;
+  }
+
+  @media screen and (max-width: 767px) {
+    padding: 0.75rem 12px 1rem;
   }
 `;
 
@@ -47,6 +52,12 @@ export const EncryptionMessage = styled.p`
   line-height: 20px;
 
   ${wrapperStyles}
+
+  @media screen and (max-width: 767px) {
+    font-size: 0.72rem;
+    padding: 6px 10px;
+    margin-bottom: 10px;
+  }
 `;
 
 export const MessageGroup = styled.div`
@@ -110,7 +121,7 @@ export const ChatMessage = styled.div`
   margin-bottom: 12px;
   font-size: 0.85rem;
   color: ${(props) => props.theme.common.mainHeadingColor};
-  width: fit-content;
+  width: auto;
   max-width: 95%;
   line-height: 20px;
   border-radius: 5px;
@@ -120,6 +131,8 @@ export const ChatMessage = styled.div`
   word-break: break-word;
   overflow-wrap: anywhere;
   min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
 
   @media screen and (min-width: 1301px) {
     max-width: 65%;
@@ -134,7 +147,9 @@ export const ChatMessage = styled.div`
   }
 
   @media screen and (max-width: 767px) {
-    max-width: 95%;
+    max-width: 88%;
+    font-size: 0.82rem;
+    line-height: 18px;
   }
 `;
 

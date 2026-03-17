@@ -69,45 +69,64 @@ export const Heading = styled.h2`
 
 export const OrderSectionTitle = styled.h3`
   color: ${(props) => props.theme.chatRoom.profileHeadingColor};
-  font-size: 0.85rem;
+  font-size: 0.68rem;
   margin-bottom: 12px;
 `;
 
 export const OrdersEmptyState = styled.p`
   color: ${(props) => props.theme.common.subHeadingColor};
-  font-size: 0.85rem;
+  font-size: 0.68rem;
 `;
 
-export const OrdersTableWrapper = styled.div`
-  overflow-x: auto;
+export const OrdersList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 `;
 
-export const OrdersTable = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 620px;
+export const OrderCard = styled.div`
+  border: 1px solid ${(props) => props.theme.common.primaryColor};
+  border-radius: 12px;
+  padding: 14px 12px;
+  background: ${(props) => props.theme.common.primaryColor};
 `;
 
-export const OrdersTableHeadCell = styled.th`
-  color: ${(props) => props.theme.common.subHeadingColor};
-  font-size: 0.75rem;
+export const OrderCardTitle = styled.div`
+  color: ${(props) => props.theme.common.mainHeadingColor};
+  font-size: 0.76rem;
   font-weight: 600;
-  padding: 0 0 10px;
-  text-align: left;
-  white-space: nowrap;
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 `;
 
-export const OrdersTableCell = styled.td`
-  color: ${(props) => props.theme.common.subHeadingColor};
-  font-size: 0.85rem;
-  padding: 12px 0;
-  vertical-align: top;
+export const OrderMetaGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
 `;
 
-export const OrdersTableRow = styled.tr`
-  &:not(:last-child) {
-    border-bottom: 1px solid ${(props) => props.theme.common.primaryColor};
-  }
+export const OrderMetaItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+`;
+
+export const OrderMetaLabel = styled.span`
+  color: ${(props) => props.theme.chatRoom.profileHeadingColor};
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+`;
+
+export const OrderMetaValue = styled.span`
+  color: ${(props) => props.theme.common.mainHeadingColor};
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 `;
 
 export const MediaButton = styled.button`

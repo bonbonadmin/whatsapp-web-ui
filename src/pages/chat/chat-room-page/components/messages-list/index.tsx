@@ -127,12 +127,16 @@ const ToolEventRow = forwardRef(
             : "";
 
     const collapsedBlock: CSSProperties = {
-      whiteSpace: "nowrap",
+      whiteSpace: "pre-wrap",
       overflow: "hidden",
       textOverflow: "ellipsis",
       display: "block",
       maxWidth: "100%",
       minWidth: 0,
+      wordBreak: "break-word",
+      overflowWrap: "anywhere",
+      lineHeight: 1.5,
+      maxHeight: 72,
     };
     const expandedBlock: CSSProperties = {
       whiteSpace: "pre-wrap",
@@ -313,6 +317,7 @@ const SingleMessage = forwardRef((props: { message: Message, isHighlighted?: boo
               overflowWrap: "anywhere",
               wordBreak: "break-word",
               minWidth: 0,
+              maxWidth: "100%",
             }}
           >
             {message.body}
@@ -342,7 +347,7 @@ const SingleMessage = forwardRef((props: { message: Message, isHighlighted?: boo
         <div style={modalStyles.overlay} onClick={() => setModalOpen(false)}>
           <div style={modalStyles.modalContent} onClick={(e) => e.stopPropagation()}>
             <img
-              src={`${baseURL}/${message.mediaLocation}`}
+              src={mediaUrl}
               alt="Preview"
               style={modalStyles.image}
             />

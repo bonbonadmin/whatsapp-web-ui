@@ -31,6 +31,7 @@ export const Container = styled.aside<{ readonly isOpen: boolean }>`
   transition: width 0.3s ease;
   overflow-x: hidden;
   overflow-y: auto;
+  background: ${(props) => props.theme.common.secondaryColor};
 
   @media screen and (max-width: 1024px) {
     position: absolute;
@@ -39,6 +40,15 @@ export const Container = styled.aside<{ readonly isOpen: boolean }>`
     height: 100%;
     z-index: 10;
     transition: width 0.3s ease;
+  }
+
+  @media screen and (max-width: 767px) {
+    position: fixed;
+    inset: 0;
+    width: ${(props) => (props.isOpen ? '100%' : '0')};
+    max-width: 100%;
+    z-index: 1000;
+    background: ${(props) => props.theme.common.secondaryColor};
   }
 `;
 
@@ -52,6 +62,11 @@ export const Header = styled.header`
   padding: 10px;
   min-height: 60px;
   /* common header */
+
+  @media screen and (max-width: 767px) {
+    padding-top: calc(10px + env(safe-area-inset-top));
+    min-height: 68px;
+  }
 `;
 
 export const CloseButton = styled.button<{ onClick: any }>`

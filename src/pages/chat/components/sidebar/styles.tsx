@@ -33,7 +33,17 @@ export const SidebarContainer = styled.aside<{ customStyles?: React.CSSPropertie
   }
 
   @media screen and (max-width: 767px) {
-    display: none;
+    display: flex;
+    min-width: 100%;
+    width: 100%;
+    flex: 1 1 100%;
+    border-right: none;
+    background:
+      linear-gradient(180deg, rgba(19, 28, 36, 0.98), rgba(17, 27, 33, 1));
+
+    &[data-mobile-visible="false"] {
+      display: none;
+    }
   }
 
   .icon {
@@ -49,11 +59,26 @@ export const Header = styled.header`
   height: 60px;
   padding: 10px;
   min-height: 60px;
+
+  @media screen and (max-width: 767px) {
+    height: auto;
+    min-height: 88px;
+    padding: 18px 16px 10px;
+    align-items: flex-end;
+    background: rgba(20, 28, 35, 0.92);
+    backdrop-filter: blur(14px);
+  }
 `;
 
 export const ImageWrapper = styled.div`
   width: 40px;
   height: 40px;
+
+  @media screen and (max-width: 767px) {
+    width: auto;
+    height: auto;
+    flex: 1;
+  }
 `;
 
 export const Avatar = styled.img`
@@ -71,6 +96,14 @@ export const Actions = styled.div`
     margin-left: 25px;
     cursor: pointer;
   }
+
+  @media screen and (max-width: 767px) {
+    margin-right: 0;
+
+    & > * {
+      margin-left: 14px;
+    }
+  }
 `;
 
 export const ThemeIconContainer = styled.div`
@@ -87,6 +120,14 @@ export const ContactContainer = styled.div`
   overflow-y: scroll;
   background: ${(props) => props.theme.common.secondaryColor};
   border-top: 1px solid ${(props) => props.theme.common.borderColor};
+
+  @media screen and (max-width: 767px) {
+    min-height: 0;
+    overflow-y: auto;
+    border-top: none;
+    background: transparent;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
+  }
 `;
 
 export const Loader = styled.p`
@@ -120,5 +161,36 @@ export const EndMessage = styled.p`
     to {
       opacity: 1;
     }
+  }
+`;
+
+export const SearchArea = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+
+  @media screen and (max-width: 767px) {
+    padding: 4px 12px 10px;
+    gap: 10px;
+    background: rgba(20, 28, 35, 0.92);
+    backdrop-filter: blur(14px);
+  }
+`;
+
+export const MobileHeaderCopy = styled.div`
+  display: flex;
+  flex-direction: column;
+`;
+
+export const MobileHeaderTitle = styled.h1`
+  color: ${(props) => props.theme.common.mainHeadingColor};
+  font-size: 1.7rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  display: none;
+
+  @media screen and (max-width: 767px) {
+    display: block;
   }
 `;

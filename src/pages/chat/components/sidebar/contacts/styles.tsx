@@ -39,6 +39,18 @@ export const Contact = styled.div<{ isActive?: boolean }>`
   .icon {
     color: ${(props) => props.theme.common.primaryColor};
   }
+
+  @media screen and (max-width: 767px) {
+    height: 78px;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: ${(props) => (props.isActive ? "rgba(255,255,255,0.06)" : "transparent")};
+
+    .sidebar-contact__icons,
+    &:not(:focus) .sidebar-contact__icons {
+      transform: translateX(0);
+    }
+  }
 `;
 
 export const AvatarWrapper = styled.div`
@@ -87,11 +99,20 @@ export const Name = styled.h2`
   font-weight: 500;
 
   ${messageStyles}
+
+  @media screen and (max-width: 767px) {
+    font-size: 1rem;
+    font-weight: 600;
+  }
 `;
 
 export const Time = styled.span`
   font-size: 0.7rem;
   color: ${(props) => props.theme.common.subHeadingColor};
+
+  @media screen and (max-width: 767px) {
+    font-size: 0.76rem;
+  }
 `;
 
 export const BottomContent = styled.div`
@@ -105,6 +126,10 @@ export const MessageWrapper = styled.div`
   overflow: hidden;
 
   ${contentStyles}
+
+  @media screen and (max-width: 767px) {
+    font-size: 0.84rem;
+  }
 `;
 
 export const MessageStatusIcon = styled(Icon)<{ isRead?: boolean }>`
@@ -117,6 +142,9 @@ export const MessageStatusIcon = styled(Icon)<{ isRead?: boolean }>`
 
 export const Subtitle = styled.span`
   margin-left: 3px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 `;
 
 export const UnreadContact = styled.span`
@@ -132,4 +160,11 @@ export const UnreadContact = styled.span`
   text-align: center;
   font-size: 0.75rem;
   font-weight: 500;
+
+  @media screen and (max-width: 767px) {
+    min-width: 20px;
+    height: 20px;
+    line-height: 20px;
+    font-size: 0.72rem;
+  }
 `;

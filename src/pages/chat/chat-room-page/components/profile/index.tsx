@@ -4,12 +4,14 @@ import {
   AboutItem,
   ActionSection,
   ActionText,
+  OrderCard,
+  OrderCardTitle,
+  OrderMetaGrid,
+  OrderMetaItem,
+  OrderMetaLabel,
+  OrderMetaValue,
+  OrdersList,
   OrdersEmptyState,
-  OrdersTable,
-  OrdersTableCell,
-  OrdersTableHeadCell,
-  OrdersTableRow,
-  OrdersTableWrapper,
   OrderSectionTitle,
   PersonalInfo,
   ProfileName,
@@ -87,30 +89,31 @@ export default function ProfileSection(props: ProfileSectionProps) {
         {orders.length === 0 ? (
           <OrdersEmptyState>No recent orders found.</OrdersEmptyState>
         ) : (
-          <OrdersTableWrapper>
-            <OrdersTable>
-              <thead>
-                <tr>
-                  <OrdersTableHeadCell>OrderId</OrdersTableHeadCell>
-                  <OrdersTableHeadCell>Order Date</OrdersTableHeadCell>
-                  <OrdersTableHeadCell>Payment Status</OrdersTableHeadCell>
-                  <OrdersTableHeadCell>Shipment Status</OrdersTableHeadCell>
-                  <OrdersTableHeadCell>Tracking code</OrdersTableHeadCell>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((order) => (
-                  <OrdersTableRow key={order.orderId}>
-                    <OrdersTableCell>{order.orderId}</OrdersTableCell>
-                    <OrdersTableCell>{formatOrderDate(order.orderDate)}</OrdersTableCell>
-                    <OrdersTableCell>{formatStatus(order.paymentStatus)}</OrdersTableCell>
-                    <OrdersTableCell>{formatStatus(order.shipmentStatus)}</OrdersTableCell>
-                    <OrdersTableCell>{order.trackingCode || "-"}</OrdersTableCell>
-                  </OrdersTableRow>
-                ))}
-              </tbody>
-            </OrdersTable>
-          </OrdersTableWrapper>
+          <OrdersList>
+            {orders.map((order) => (
+              <OrderCard key={order.orderId}>
+                <OrderCardTitle>{order.orderId}</OrderCardTitle>
+                <OrderMetaGrid>
+                  <OrderMetaItem>
+                    <OrderMetaLabel>Order Date</OrderMetaLabel>
+                    <OrderMetaValue>{formatOrderDate(order.orderDate)}</OrderMetaValue>
+                  </OrderMetaItem>
+                  <OrderMetaItem>
+                    <OrderMetaLabel>Payment Status</OrderMetaLabel>
+                    <OrderMetaValue>{formatStatus(order.paymentStatus)}</OrderMetaValue>
+                  </OrderMetaItem>
+                  <OrderMetaItem>
+                    <OrderMetaLabel>Shipment Status</OrderMetaLabel>
+                    <OrderMetaValue>{formatStatus(order.shipmentStatus)}</OrderMetaValue>
+                  </OrderMetaItem>
+                  <OrderMetaItem>
+                    <OrderMetaLabel>Tracking Code</OrderMetaLabel>
+                    <OrderMetaValue>{order.trackingCode || "-"}</OrderMetaValue>
+                  </OrderMetaItem>
+                </OrderMetaGrid>
+              </OrderCard>
+            ))}
+          </OrdersList>
         )}
       </Section>
 
