@@ -284,15 +284,26 @@ const SingleMessage = forwardRef((props: { message: Message, isHighlighted?: boo
             target="_blank"
             rel="noopener noreferrer"
             style={{
-              // color: "#0066cc", // Link color
               textDecoration: "underline",
               fontWeight: "bold",
+              overflowWrap: "anywhere",
+              wordBreak: "break-word",
             }}
           >
             {fileName}
           </a>
         ) : (
-          <span>{message.body}</span>
+          <span
+            style={{
+              display: "block",
+              whiteSpace: "pre-wrap",
+              overflowWrap: "anywhere",
+              wordBreak: "break-word",
+              minWidth: 0,
+            }}
+          >
+            {message.body}
+          </span>
         )}
         <ChatMessageFiller />
         <ChatMessageFooter>

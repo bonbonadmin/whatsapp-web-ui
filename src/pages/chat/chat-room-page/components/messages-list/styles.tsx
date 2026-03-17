@@ -115,8 +115,8 @@ export const ChatMessage = styled.div`
   line-height: 20px;
   border-radius: 5px;
   position: relative;
-  white-space: pre-line;
-  display: flex;
+  white-space: pre-wrap;
+  display: block;
   word-break: break-word;
   overflow-wrap: anywhere;
   min-width: 0;
