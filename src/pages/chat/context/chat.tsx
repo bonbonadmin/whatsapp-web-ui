@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { inbox } from "../data/inbox";
-import { Inbox, InboxResponse } from "common/types/common.type";
+import { Inbox, InboxResponse, RecentOrder } from "common/types/common.type";
 import {
   getMessages,
   Message,
   MessagePayload,
   MessageResponse,
+  ToolApiItem,
 } from "../chat-room-page/components/messages-list/data/get-messages";
 import axios from "axios";
 
@@ -33,6 +34,7 @@ type ChatContextProp = {
   onToggleSearch: (toggle: boolean) => void;
   loadMore: () => void;
   isFetchInbox: boolean;
+  recentOrders: RecentOrder[];
 };
 
 const initialValue: ChatContextProp = {
@@ -44,6 +46,7 @@ const initialValue: ChatContextProp = {
   searchResults: [],
   hasMore: true,
   isFetchInbox: false,
+  recentOrders: [],
   onChangeChat() {
     throw new Error();
   },
@@ -84,6 +87,7 @@ export default function ChatProvider(props: { children: any }) {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isFetchInbox, setIsFetchInbox] = useState<boolean>(false);
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const baseURL = process.env.REACT_APP_API_URL;
 
   const activeChatRef = useRef(activeChat);
@@ -141,41 +145,80 @@ export default function ChatProvider(props: { children: any }) {
         axios
           .get(`${baseURL}/message-inbox/` + id)
           .then((response) => {
-            const newMessages: Message[] = [];
+            const chatMessages: Message[] = [];
             if (response.data.data.length) {
               response.data.data.forEach((value: MessageResponse) => {
-                // const timeStamp =
-                //   new Date(value.created_at).getHours() +
-                //   ":" +
-                //   new Date(value.created_at).getMinutes();
+                const createdAt = new Date(value.created_at);
                 const timeStamp =
-                  new Date().toDateString() === new Date(value.created_at).toDateString()
-                    ? new Date(value.created_at).toLocaleTimeString([], {
+                  new Date().toDateString() === createdAt.toDateString()
+                    ? createdAt.toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",
                         hour12: false,
                       })
-                    : new Date(value.created_at).toLocaleDateString("en-GB", {
+                    : createdAt.toLocaleDateString("en-GB", {
                         day: "2-digit",
                         month: "2-digit",
                       });
                 const data: Message = {
                   id: value.id,
                   body: value.message_text,
-                  date: new Date(value.created_at).toLocaleDateString(),
+                  date: createdAt.toLocaleDateString(),
                   timestamp: timeStamp,
+                  fullTimestamp: createdAt.toLocaleString("en-GB"),
                   messageStatus: value.participant_message_status,
                   isOpponent: value.from_me === 0 ? true : false,
                   messageType: value.message_type,
-                  mediaLocation: value.media_location
+                  mediaLocation: value.media_location,
+                  createdAtISO: createdAt.toISOString(),
                 };
-                newMessages.push(data);
+                chatMessages.push(data);
               });
             }
-            setMessages(newMessages);
+
+            const toolRows: ToolApiItem[] = Array.isArray(response.data.tools)
+              ? response.data.tools
+              : [];
+            const toolMessages: Message[] = toolRows.map((tool) => {
+              const createdAt = new Date(tool.created_at);
+              const timeStamp =
+                new Date().toDateString() === createdAt.toDateString()
+                  ? createdAt.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false,
+                    })
+                  : createdAt.toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "2-digit",
+                    });
+
+              return {
+                id: String(tool.id),
+                body: "",
+                date: createdAt.toLocaleDateString(),
+                timestamp: timeStamp,
+                fullTimestamp: createdAt.toLocaleString("en-GB"),
+                messageStatus: "",
+                isOpponent: false,
+                messageType: "tool",
+                functionName: tool.function_name,
+                functionArgs: tool.function_args,
+                toolOutput: tool.tool_output,
+                createdAtISO: createdAt.toISOString(),
+              };
+            });
+
+            const mergedMessages = [...chatMessages, ...toolMessages].sort((a, b) =>
+              String(a.createdAtISO ?? "").localeCompare(String(b.createdAtISO ?? ""))
+            );
+
+            setMessages(mergedMessages);
+            setRecentOrders(Array.isArray(response.data.orders) ? response.data.orders : []);
           })
           .catch((err) => {
             console.log(err.message);
+            setRecentOrders([]);
           });
       } catch (error) {
         console.error("Error fetching messages list:", error);
@@ -405,6 +448,7 @@ export default function ChatProvider(props: { children: any }) {
         searchResults,
         hasMore,
         isFetchInbox,
+        recentOrders,
         onChangeChat: handleChangeChat,
         onSendMessage: handleSendMessage,
         onUploadFile: handleFileUpload,

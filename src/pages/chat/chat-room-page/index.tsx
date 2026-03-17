@@ -93,8 +93,8 @@ export default function ChatRoomPage() {
           >
             <ProfileSection
               name={activeInbox?.name ?? ""}
-              image={activeInbox?.image ?? ""}
               phoneNumber={activeInbox?.participantId ?? ""}
+              orders={chatCtx.recentOrders}
             />
           </Sidebar>
         </Container>
@@ -150,8 +150,8 @@ export default function ChatRoomPage() {
         >
           <ProfileSection
             name={activeInbox?.name ?? ""}
-            image={activeInbox?.image ?? ""}
             phoneNumber={activeInbox?.participantId ?? ""}
+            orders={chatCtx.recentOrders}
           />
         </Sidebar>
       </Container>

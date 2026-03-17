@@ -1,15 +1,16 @@
 import Icon from "common/components/icons";
+import { RecentOrder } from "common/types/common.type";
 import {
   AboutItem,
   ActionSection,
   ActionText,
-  Avatar,
-  AvatarWrapper,
-  Heading,
-  HeadingWrapper,
-  MediaButton,
-  MediaImage,
-  MediaImagesWrapper,
+  OrdersEmptyState,
+  OrdersTable,
+  OrdersTableCell,
+  OrdersTableHeadCell,
+  OrdersTableRow,
+  OrdersTableWrapper,
+  OrderSectionTitle,
   PersonalInfo,
   ProfileName,
   Section,
@@ -18,12 +19,33 @@ import {
 
 type ProfileSectionProps = {
   name: string;
-  image: string;
   phoneNumber: string;
+  orders: RecentOrder[];
 };
 
 export default function ProfileSection(props: ProfileSectionProps) {
-  const { name, image, phoneNumber  } = props;
+  const { name, phoneNumber, orders } = props;
+
+  const formatOrderDate = (value: string | null) => {
+    if (!value) return "-";
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
+  const formatStatus = (value: string | null) => {
+    if (!value) return "-";
+    return value
+      .split("_")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+  };
 
   return (
     <Wrapper>
@@ -58,6 +80,38 @@ export default function ProfileSection(props: ProfileSectionProps) {
           </AboutItem> */}
           <AboutItem>{phoneNumber}</AboutItem>
         </ul>
+      </Section>
+
+      <Section>
+        <OrderSectionTitle>Recent Orders</OrderSectionTitle>
+        {orders.length === 0 ? (
+          <OrdersEmptyState>No recent orders found.</OrdersEmptyState>
+        ) : (
+          <OrdersTableWrapper>
+            <OrdersTable>
+              <thead>
+                <tr>
+                  <OrdersTableHeadCell>OrderId</OrdersTableHeadCell>
+                  <OrdersTableHeadCell>Order Date</OrdersTableHeadCell>
+                  <OrdersTableHeadCell>Payment Status</OrdersTableHeadCell>
+                  <OrdersTableHeadCell>Shipment Status</OrdersTableHeadCell>
+                  <OrdersTableHeadCell>Tracking code</OrdersTableHeadCell>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((order) => (
+                  <OrdersTableRow key={order.orderId}>
+                    <OrdersTableCell>{order.orderId}</OrdersTableCell>
+                    <OrdersTableCell>{formatOrderDate(order.orderDate)}</OrdersTableCell>
+                    <OrdersTableCell>{formatStatus(order.paymentStatus)}</OrdersTableCell>
+                    <OrdersTableCell>{formatStatus(order.shipmentStatus)}</OrdersTableCell>
+                    <OrdersTableCell>{order.trackingCode || "-"}</OrdersTableCell>
+                  </OrdersTableRow>
+                ))}
+              </tbody>
+            </OrdersTable>
+          </OrdersTableWrapper>
+        )}
       </Section>
 
       {/* <ActionSection>

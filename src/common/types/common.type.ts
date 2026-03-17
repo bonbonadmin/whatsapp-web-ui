@@ -5,6 +5,14 @@ export type EventSummary = {
   started_at: string; // ISO string
 };
 
+export type RecentOrder = {
+  orderId: string;
+  orderDate: string | null;
+  paymentStatus: string | null;
+  shipmentStatus: string | null;
+  trackingCode: string | null;
+};
+
 export type Inbox = {
   id: string;
   name: string;

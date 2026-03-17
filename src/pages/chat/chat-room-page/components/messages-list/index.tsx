@@ -1,20 +1,17 @@
-import { CSSProperties, forwardRef, useEffect, useMemo, useRef, useState } from "react";
+import { CSSProperties, forwardRef, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import Icon from "common/components/icons";
 import useScrollToBottom from "./hooks/useScrollToBottom";
-import { getMessages, Message, MessageResponse } from "./data/get-messages";
+import { Message } from "./data/get-messages";
 import {
   ChatMessage,
   ChatMessageFiller,
   ChatMessageFooter,
   Container,
-  Date,
-  DateWrapper,
   EncryptionMessage,
   MessageGroup,
 } from "./styles";
-import { useChatContext } from "pages/chat/context/chat";
 
 type MessagesListProps = {
   onShowBottomIcon: Function;
@@ -29,11 +26,10 @@ type MessagesListProps = {
 export default function MessagesList(props: MessagesListProps) {
   const { onShowBottomIcon, shouldScrollToBottom, testToBottom, selectedSearchId, isSearchOpen, lastMessageId } = props;
   console.log("test to bottom", testToBottom);
-  const chatCtx = useChatContext();
 
   const params = useParams();
 
-  const { containerRef, lastMessageRef } = useScrollToBottom(
+  const { containerRef } = useScrollToBottom(
     onShowBottomIcon,
     shouldScrollToBottom,
     params.id,
@@ -68,9 +64,21 @@ export default function MessagesList(props: MessagesListProps) {
         <Date> TODAY </Date>
       </DateWrapper> */}
       <MessageGroup>
-        {props.listMessages.map((message, index) => {
-          const isLastMessage = index === props.listMessages.length - 1;
-          return (
+        {props.listMessages.map((message) =>
+          message.messageType === "tool" ? (
+            <ToolEventRow
+              key={message.id}
+              ref={(el) => {
+                messageRefs.current[message.id] = el as HTMLDivElement | null;
+              }}
+              id={message.id}
+              functionName={message.functionName}
+              functionArgs={message.functionArgs}
+              toolOutput={message.toolOutput}
+              timestamp={message.timestamp}
+              isHighlighted={isSearchOpen && message.id === selectedSearchId}
+            />
+          ) : (
             <SingleMessage
               key={message.id}
               message={message}
@@ -79,12 +87,114 @@ export default function MessagesList(props: MessagesListProps) {
               }}
               isHighlighted={isSearchOpen && message.id === selectedSearchId}
             />
-          );
-        })}
+          )
+        )}
       </MessageGroup>
     </Container>
   );
 }
+
+const ToolEventRow = forwardRef(
+  (
+    props: {
+      id: string;
+      timestamp?: string;
+      functionName?: string;
+      functionArgs?: string | null;
+      toolOutput?: any;
+      isHighlighted?: boolean;
+    },
+    ref: any
+  ) => {
+    const { id, timestamp, functionName, functionArgs, toolOutput, isHighlighted } = props;
+    const [argsOpen, setArgsOpen] = useState(false);
+    const [outOpen, setOutOpen] = useState(false);
+
+    const argText =
+      typeof functionArgs === "string"
+        ? functionArgs
+        : functionArgs
+          ? JSON.stringify(functionArgs)
+          : "";
+
+    const outText =
+      typeof toolOutput === "string"
+        ? toolOutput
+        : toolOutput?.output != null
+          ? String(toolOutput.output)
+          : toolOutput
+            ? JSON.stringify(toolOutput)
+            : "";
+
+    const collapsedBlock: CSSProperties = {
+      whiteSpace: "nowrap",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      display: "block",
+    };
+    const expandedBlock: CSSProperties = {
+      whiteSpace: "pre-wrap",
+      wordBreak: "break-word",
+      display: "block",
+    };
+    const smallBtn: CSSProperties = {
+      marginLeft: 8,
+      fontSize: 11,
+      padding: "2px 6px",
+      borderRadius: 4,
+      border: "1px solid #d0d7de",
+      background: "#fff",
+      cursor: "pointer",
+    };
+
+    const renderWithQuotes = (text: string) => (text === "" ? '""' : text);
+
+    return (
+      <div
+        id={id}
+        ref={ref}
+        style={{
+          margin: "8px 0",
+          padding: "10px 12px",
+          borderRadius: 8,
+          background: isHighlighted ? "#FFF8E1" : "#F5F7FB",
+          border: isHighlighted ? "1px solid #FFD700" : "1px solid #E4E8F0",
+          fontSize: 12,
+          lineHeight: 1.5,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
+          <div>
+            <strong>Tool call:</strong> <code>{functionName || ""}</code>
+          </div>
+          <span style={{ color: "#667085", whiteSpace: "nowrap" }}>{timestamp}</span>
+        </div>
+
+        <div style={{ marginTop: 4 }}>
+          <strong>Arguments:</strong>
+          <button type="button" style={smallBtn} onClick={() => setArgsOpen((value) => !value)}>
+            {argsOpen ? "Collapse" : "Expand"}
+          </button>
+          <code style={argsOpen ? expandedBlock : collapsedBlock}>
+            {renderWithQuotes(argText)}
+          </code>
+        </div>
+
+        <div style={{ marginTop: 4 }}>
+          <strong>Output:</strong>
+          <button type="button" style={smallBtn} onClick={() => setOutOpen((value) => !value)}>
+            {outOpen ? "Collapse" : "Expand"}
+          </button>
+          <code style={outOpen ? expandedBlock : collapsedBlock}>
+            {renderWithQuotes(outText)}
+          </code>
+        </div>
+      </div>
+    );
+  }
+);
+
+ToolEventRow.displayName = "ToolEventRow";
 
 const SingleMessage = forwardRef((props: { message: Message, isHighlighted?: boolean }, ref: any) => {
   const { message, isHighlighted } = props;

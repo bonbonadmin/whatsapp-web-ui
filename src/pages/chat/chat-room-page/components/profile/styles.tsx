@@ -67,6 +67,49 @@ export const Heading = styled.h2`
   flex: 1;
 `;
 
+export const OrderSectionTitle = styled.h3`
+  color: ${(props) => props.theme.chatRoom.profileHeadingColor};
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+`;
+
+export const OrdersEmptyState = styled.p`
+  color: ${(props) => props.theme.common.subHeadingColor};
+  font-size: 0.85rem;
+`;
+
+export const OrdersTableWrapper = styled.div`
+  overflow-x: auto;
+`;
+
+export const OrdersTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 620px;
+`;
+
+export const OrdersTableHeadCell = styled.th`
+  color: ${(props) => props.theme.common.subHeadingColor};
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0 0 10px;
+  text-align: left;
+  white-space: nowrap;
+`;
+
+export const OrdersTableCell = styled.td`
+  color: ${(props) => props.theme.common.subHeadingColor};
+  font-size: 0.85rem;
+  padding: 12px 0;
+  vertical-align: top;
+`;
+
+export const OrdersTableRow = styled.tr`
+  &:not(:last-child) {
+    border-bottom: 1px solid ${(props) => props.theme.common.primaryColor};
+  }
+`;
+
 export const MediaButton = styled.button`
   .icon {
     color: ${(props) => props.theme.common.subHeadingColor};
