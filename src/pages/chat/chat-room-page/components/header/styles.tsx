@@ -6,9 +6,9 @@ export const Container = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 60px;
-  padding: 10px;
-  min-height: 60px;
+  height: 69px;
+  padding: 12px 10px;
+  min-height: 69px;
   /* should refactor to header  */
 
   z-index: 10;
@@ -24,8 +24,8 @@ export const Container = styled.div`
 
   @media screen and (max-width: 767px) {
     height: auto;
-    min-height: 60px;
-    padding: 10px 12px;
+    min-height: 79px;
+    padding: 14px 12px;
     background: rgba(20, 28, 35, 0.9);
     backdrop-filter: blur(14px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -44,8 +44,8 @@ export const BackButton = styled.button`
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
+    width: 38px;
+    height: 38px;
     margin-right: 8px;
     border-radius: 999px;
     background: transparent;
