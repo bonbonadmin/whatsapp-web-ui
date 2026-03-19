@@ -24,8 +24,8 @@ export const Container = styled.div`
 
   @media screen and (max-width: 767px) {
     height: auto;
-    min-height: 79px;
-    padding: 14px 12px;
+    min-height: 92px;
+    padding: calc(env(safe-area-inset-top) + 18px) 12px 14px;
     background: rgba(20, 28, 35, 0.9);
     backdrop-filter: blur(14px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -79,6 +79,13 @@ export const ProfileWrapper = styled.div<{ onClick: any }>`
   flex: 1;
   cursor: pointer;
   min-width: 0;
+
+  @media screen and (max-width: 767px) {
+    min-height: 44px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
 `;
 
 export const profileStyles = css`
