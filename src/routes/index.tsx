@@ -12,17 +12,14 @@ export default function AppRoutes() {
     <ChatProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        {/* <Route
+        <Route
           path="/:id"
           element={<ProtectedRoute Component={ChatPage} />}
         />
         <Route
           path="/"
           element={<ProtectedRoute Component={UnSelectedChatPage} />}
-        /> */}
-
-        <Route path="/:id" element={<ChatPage />} />
-        <Route path="/" element={<UnSelectedChatPage />} />
+        />
       </Routes>
     </ChatProvider>
   );

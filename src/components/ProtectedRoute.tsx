@@ -1,23 +1,22 @@
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-
-const isAuthenticated = () => !!localStorage.getItem('token');
-const getUserEmail = () => localStorage.getItem('userEmail');
+import React, { useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { clearAuthSession, isAuthenticated } from "common/auth/session";
 
 const ProtectedRoute = ({ Component }: { Component: React.ComponentType }) => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    const token = isAuthenticated();
-    const userEmail = getUserEmail();
-
-    if (!token || !userEmail) {
-      console.warn('Unauthorized access. Missing token or email.');
-      navigate('/login', { replace: true });
+    if (!isAuthenticated()) {
+      clearAuthSession();
+      navigate("/login", {
+        replace: true,
+        state: { from: location.pathname + location.search },
+      });
     }
-  }, [navigate]);
+  }, [location.pathname, location.search, navigate]);
 
-  return isAuthenticated() && getUserEmail() ? <Component /> : null;
+  return isAuthenticated() ? <Component /> : null;
 };
 
 export default ProtectedRoute;

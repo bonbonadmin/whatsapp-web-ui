@@ -38,8 +38,35 @@ export const Content = styled.div`
   display: flex;
   overflow-y: hidden;
   overflow-x: hidden;
-  
+
   @media screen and (max-width: 1050px) {
     height: 100dvh;
+  }
+
+  @media screen and (max-width: 767px) {
+    max-width: 100%;
+    height: 100dvh;
+    background:
+      linear-gradient(180deg, rgba(11, 20, 26, 0.82), rgba(11, 20, 26, 0.98)),
+      ${(props) => props.theme.layout.bg};
+    box-shadow: none;
+    border-radius: 0;
+  }
+`;
+
+export const MobilePane = styled.div`
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+
+  @media screen and (max-width: 767px) {
+    width: 100%;
+    min-width: 100%;
+    height: 100%;
+
+    &[data-mobile-visible="false"] {
+      display: none;
+    }
   }
 `;

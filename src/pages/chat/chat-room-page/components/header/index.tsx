@@ -1,11 +1,13 @@
 import Icon from "common/components/icons";
 import OptionsMenu from "pages/chat/components/option-menu";
+import { useNavigate } from "react-router-dom";
 import {
   Action,
   Actions,
   actionStyles,
   Avatar,
   AvatarWrapper,
+  BackButton,
   Container,
   Name,
   ProfileWrapper,
@@ -21,10 +23,14 @@ type HeaderProps = {
 };
 
 export default function Header(props: HeaderProps) {
+  const navigate = useNavigate();
   const { title, subTitle, image, onProfileClick, onSearchClick } = props;
 
   return (
     <Container>
+      <BackButton aria-label="Back to chats" onClick={() => navigate("/")}>
+        <Icon id="back" className="icon" />
+      </BackButton>
       {/* <AvatarWrapper>
         <Avatar src={image} />
       </AvatarWrapper> */}

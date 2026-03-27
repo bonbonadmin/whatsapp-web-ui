@@ -1,14 +1,6 @@
 import styled from "styled-components";
 
-/**
- * On desktop: regular column.
- * On mobile (<768px): left drawer that slides over content.
- * Controlled by the "$isOpen" prop.
- */
-export const SidebarContainer = styled.aside<{
-  $isOpen?: boolean;
-  customStyles?: React.CSSProperties;
-}>`
+export const SidebarContainer = styled.aside<{ customStyles?: React.CSSProperties }>`
   min-width: 300px;
   flex: 0 0 360px;
   border-right: 1px solid ${(props) => props.theme.common.borderColor};
@@ -41,18 +33,18 @@ export const SidebarContainer = styled.aside<{
     }
   }
 
-  /* Mobile drawer behavior */
   @media screen and (max-width: 767px) {
-    position: fixed;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: min(420px, 92vw);
-    max-width: 92vw;
-    transform: translateX(${(p) => (p.$isOpen ? "0" : "-100%")});
-    transition: transform 0.25s ease;
-    z-index: 1000; /* above chat content */
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+    display: flex;
+    min-width: 100%;
+    width: 100%;
+    flex: 1 1 100%;
+    border-right: none;
+    background:
+      linear-gradient(180deg, rgba(19, 28, 36, 0.98), rgba(17, 27, 33, 1));
+
+    &[data-mobile-visible="false"] {
+      display: none;
+    }
   }
 
   .icon {
@@ -68,6 +60,14 @@ export const Header = styled.header`
   height: 60px;
   padding: 10px;
   min-height: 60px;
+
+  @media screen and (max-width: 767px) {
+    min-height: 88px;
+    padding: 18px 16px 10px;
+    align-items: flex-end;
+    background: rgba(20, 28, 35, 0.92);
+    backdrop-filter: blur(14px);
+  }
 `;
 
 export const ImageWrapper = styled.div`
@@ -92,6 +92,14 @@ export const Actions = styled.div`
     background: none;
     border: none;
   }
+
+  @media screen and (max-width: 767px) {
+    margin-right: 0;
+
+    & > * {
+      margin-left: 14px;
+    }
+  }
 `;
 
 export const ThemeIconContainer = styled.div`
@@ -105,10 +113,16 @@ export const ThemeIconContainer = styled.div`
 
 export const ContactContainer = styled.div`
   flex: 1;
-  min-height: 0; /* critical for nested scroll on mobile */
+  min-height: 0;
   overflow-y: auto;
   background: ${(props) => props.theme.common.secondaryColor};
   border-top: 1px solid ${(props) => props.theme.common.borderColor};
+
+  @media screen and (max-width: 767px) {
+    border-top: none;
+    background: transparent;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
+  }
 `;
 
 export const Loader = styled.p`
@@ -119,8 +133,12 @@ export const Loader = styled.p`
   animation: fadeIn 0.5s ease-in-out;
 
   @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 `;
 
@@ -132,46 +150,11 @@ export const EndMessage = styled.p`
   animation: fadeIn 0.5s ease-in-out;
 
   @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-`;
-
-/** Dark overlay behind the drawer on mobile */
-export const DrawerOverlay = styled.div<{ $isOpen?: boolean }>`
-  display: none;
-
-  @media (max-width: 767px) {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.28);
-    opacity: ${(p) => (p.$isOpen ? 1 : 0)};
-    pointer-events: ${(p) => (p.$isOpen ? "auto" : "none")};
-    transition: opacity 0.2s ease;
-    z-index: 999;
-  }
-`;
-
-/** Small FAB to open the drawer on mobile */
-export const OpenInboxFab = styled.button`
-  display: none;
-
-  @media (max-width: 767px) {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    position: fixed;
-    left: calc(12px + env(safe-area-inset-left));
-    bottom: calc(env(safe-area-inset-bottom) + var(--composer-h, 72px) + 250px);
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background: ${(p) => p.theme.common.secondaryColor};
-    color: ${(p) => p.theme.common.subHeadingColor};
-    box-shadow: 0 6px 20px rgba(0,0,0,.2);
-    z-index: 50;
-    border: none;
-    cursor: pointer;
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 `;

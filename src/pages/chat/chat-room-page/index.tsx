@@ -52,8 +52,7 @@ export default function ChatRoomPage() {
   if (participantMessages.length === 0) {
     return (
       <ChatLayout>
-        {/* Drive layout/open-close via data-profile attr */}
-        <Container data-profile={isProfileOpen ? "open" : "closed"}>
+        <Container>
           <Body>
             <Background />
             <Header
@@ -78,26 +77,21 @@ export default function ChatRoomPage() {
             </FooterContainer>
           </Body>
 
-          {/* Search sidebar stays as-is */}
           <Sidebar title="Search" isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)}>
             <SearchSection onClickSearch={handleClickSearch} isSearchActive={isSearchOpen} />
           </Sidebar>
-
-          {/* Profile sidebar wrapped in a flex item that the parent sizes via [data-profile-panel] */}
-          <div data-profile-panel>
-            <Sidebar
-              title="Contact Info"
-              isOpen={isProfileOpen}
-              onClose={() => setIsProfileOpen(false)}
-            >
-              <ProfileSection
-                name={activeInbox?.name ?? ""}
-                image={activeInbox?.image ?? ""}
-                phoneNumber={activeInbox?.participantId ?? ""}
-                events={chatCtx.bookingEvents}
-              />
-            </Sidebar>
-          </div>
+          <Sidebar
+            title="Contact Info"
+            isOpen={isProfileOpen}
+            onClose={() => setIsProfileOpen(false)}
+          >
+            <ProfileSection
+              name={activeInbox?.name ?? ""}
+              image={activeInbox?.image ?? ""}
+              phoneNumber={activeInbox?.participantId ?? ""}
+              events={chatCtx.bookingEvents}
+            />
+          </Sidebar>
         </Container>
       </ChatLayout>
     );
@@ -107,8 +101,7 @@ export default function ChatRoomPage() {
 
   return (
     <ChatLayout>
-      {/* Drive layout/open-close via data-profile attr */}
-      <Container data-profile={isProfileOpen ? "open" : "closed"}>
+      <Container>
         <Body>
           <Background />
           <Header
@@ -145,26 +138,21 @@ export default function ChatRoomPage() {
           </FooterContainer>
         </Body>
 
-        {/* Search sidebar stays as-is */}
         <Sidebar title="Search" isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)}>
           <SearchSection onClickSearch={handleClickSearch} isSearchActive={isSearchOpen} />
         </Sidebar>
-
-        {/* Profile sidebar wrapped in a flex item that the parent sizes via [data-profile-panel] */}
-        <div data-profile-panel>
-          <Sidebar
-            title="Contact Info"
-            isOpen={isProfileOpen}
-            onClose={() => setIsProfileOpen(false)}
-          >
-            <ProfileSection
-              name={activeInbox?.name ?? ""}
-              image={activeInbox?.image ?? ""}
-              phoneNumber={activeInbox?.participantId ?? ""}
-              events={chatCtx.bookingEvents}
-            />
-          </Sidebar>
-        </div>
+        <Sidebar
+          title="Contact Info"
+          isOpen={isProfileOpen}
+          onClose={() => setIsProfileOpen(false)}
+        >
+          <ProfileSection
+            name={activeInbox?.name ?? ""}
+            image={activeInbox?.image ?? ""}
+            phoneNumber={activeInbox?.participantId ?? ""}
+            events={chatCtx.bookingEvents}
+          />
+        </Sidebar>
       </Container>
     </ChatLayout>
   );

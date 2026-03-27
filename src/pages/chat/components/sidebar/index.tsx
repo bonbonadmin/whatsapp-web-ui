@@ -28,14 +28,13 @@ import {
   Loader,
   SidebarContainer,
   ThemeIconContainer,
-  DrawerOverlay,
-  OpenInboxFab,
 } from "./styles";
 
 import Modal from "@mui/material/Modal";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
+import { clearAuthSession } from "common/auth/session";
 
 // ------------------------------
 // Helpers (normalize + safe parse)
@@ -133,7 +132,8 @@ const Caret = styled.span<{ $mode: "light" | "dark" }>`
 // ------------------------------
 // Component
 // ------------------------------
-export default function Sidebar() {
+export default function Sidebar(props: { mobileVisible?: boolean }) {
+  const { mobileVisible = true } = props;
   const theme = useAppTheme();
   const navigate = useNavigate();
   const chatCtx = useChatContext();
@@ -146,9 +146,6 @@ export default function Sidebar() {
   // WA lines
   const [waLines, setWaLines] = useState<WaLine[]>([]);
   const [selectedWaId, setSelectedWaId] = useState<string>("");
-
-  // mobile drawer open state
-  const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
 
   // headers helper — ALWAYS a Record<string,string>
   const waHeaders = useMemo<Record<string, string>>(() => {
@@ -194,11 +191,6 @@ export default function Sidebar() {
     restoreScroll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Restore when opening drawer (mobile)
-  useEffect(() => {
-    if (isMobileOpen) restoreScroll();
-  }, [isMobileOpen, restoreScroll]);
 
   // Restore when WA line changes
   useEffect(() => {
@@ -280,19 +272,17 @@ export default function Sidebar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // open chat, keep waId in URL; close the drawer on mobile
+  // open chat, keep waId in URL
   const handleChangeChat = (chat: Inbox) => {
     chatCtx.onChangeChat(chat);
     chatCtx.onFirstOpenChat(true);
 
     const q = selectedWaId ? `?waId=${encodeURIComponent(selectedWaId)}` : "";
     navigate("/" + chat.participantId + q);
-    setIsMobileOpen(false);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userEmail");
+    clearAuthSession();
     navigate("/login", { replace: true });
   };
 
@@ -404,37 +394,11 @@ export default function Sidebar() {
     }
   };
 
-  // Close drawer with ESC key (mobile external keyboard support)
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setIsMobileOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
   return (
-    <>
-      {/* Open FAB only visible on mobile */}
-      <OpenInboxFab
-        aria-label="Open chats"
-        onClick={() => setIsMobileOpen(true)}
-        title="Open chats"
-      >
-        <Icon id="menu" className="icon" />
-      </OpenInboxFab>
-
-      {/* Dark overlay behind the drawer on mobile */}
-      <DrawerOverlay
-        $isOpen={isMobileOpen}
-        onClick={() => setIsMobileOpen(false)}
-        aria-hidden={!isMobileOpen}
-      />
-
-      <SidebarContainer
-        customStyles={{ overflow: "hidden" }}
-        $isOpen={isMobileOpen}
-      >
+    <SidebarContainer
+      data-mobile-visible={mobileVisible ? "true" : "false"}
+      customStyles={{ overflow: "hidden" }}
+    >
         <Header>
           <Actions>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
@@ -558,6 +522,5 @@ export default function Sidebar() {
           </Box>
         </Modal>
       </SidebarContainer>
-    </>
   );
 }
