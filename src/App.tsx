@@ -2,9 +2,15 @@ import React, { useEffect } from "react";
 import AppRoutes from "routes";
 import useAppLoad from "common/hooks/useAppLoad";
 import SplashPage from "pages/splash";
+import AuthSessionMonitor from "common/auth/AuthSessionMonitor";
+import { clearLegacyAuthStorage } from "common/auth/session";
 
 export default function App() {
   const { isLoaded, progress } = useAppLoad();
+
+  useEffect(() => {
+    clearLegacyAuthStorage();
+  }, []);
 
   // useEffect(() => {
   //   const resetLocalStorage = () => {
@@ -26,5 +32,10 @@ export default function App() {
     return <SplashPage progress={progress} />;
   }
 
-  return <AppRoutes />;
+  return (
+    <>
+      <AuthSessionMonitor />
+      <AppRoutes />
+    </>
+  );
 }

@@ -1,10 +1,12 @@
 import { useAppTheme } from "common/theme";
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import bcrypt from "bcryptjs";
+import { clearAuthSession, createAuthSession, isAuthenticated } from "common/auth/session";
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import bcrypt from "bcryptjs/dist/bcrypt";
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const theme = useAppTheme();
 
@@ -18,8 +20,15 @@ const LoginPage: React.FC = () => {
 
   const userLogin = process.env.REACT_APP_LOGIN_EMAIL;
   const encryptedPassword = process.env.REACT_APP_ENCRYPTED_PASSWORD || "";
+  const redirectTo = location.state?.from || "/";
 
-  const handleLogin = (e: React.MouseEvent<HTMLButtonElement>) => {
+  useEffect(() => {
+    if (isAuthenticated()) {
+      navigate(redirectTo, { replace: true });
+    }
+  }, [navigate, redirectTo]);
+
+  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!email || !password) {
@@ -29,19 +38,16 @@ const LoginPage: React.FC = () => {
 
     setError("");
 
-    const passwordMatch = bcrypt.compareSync(password, encryptedPassword);
+    const passwordMatch = encryptedPassword
+      ? bcrypt.compareSync(password, encryptedPassword)
+      : false;
 
-    // Compare with the stored hash
-    if (email === userLogin && passwordMatch) {
-      console.log("✅ Password Match: Login Successful");
-
-      localStorage.setItem("token", "mockToken123");
-      localStorage.setItem("userEmail", email);
-
-      navigate("/");
+    if (email.trim().toLowerCase() === userLogin?.trim().toLowerCase() && passwordMatch) {
+      createAuthSession(email.trim());
+      navigate(redirectTo, { replace: true });
     } else {
-      setError("❌ Incorrect password");
-      console.log("❌ Password Mismatch: Login Failed");
+      clearAuthSession();
+      setError("Incorrect email or password");
     }
   };
 
@@ -63,7 +69,7 @@ const LoginPage: React.FC = () => {
         <div style={localStyles.rightSection}>
           <h2 style={localStyles.title}>Hello Again!</h2>
           {/* <p>Aliquam consectetur et tincidunt praesent enim massa pellentesque velit odio neque</p> */}
-          <div style={localStyles.form}>
+          <form style={localStyles.form} onSubmit={handleLogin}>
             <input
               type="email"
               placeholder="Email"
@@ -82,14 +88,14 @@ const LoginPage: React.FC = () => {
             />
             {error && <p style={localStyles.error}>{error}</p>}
             <button
-              onClick={handleLogin}
+              type="submit"
               style={{ ...localStyles.button }}
               onMouseOver={(e) => (e.currentTarget.style.background = "#40af91")}
               onMouseOut={(e) => (e.currentTarget.style.background = "#41CCA6")}
             >
               Login
             </button>
-          </div>
+          </form>
         </div>
       </div>
     </div>

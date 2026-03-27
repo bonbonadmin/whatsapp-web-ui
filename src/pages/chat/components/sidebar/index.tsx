@@ -31,6 +31,7 @@ import Modal from "@mui/material/Modal";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
+import { clearAuthSession } from "common/auth/session";
 
 // ------------------------------
 // Helpers (normalize + safe parse)
@@ -79,8 +80,7 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userEmail");
+    clearAuthSession();
     navigate("/login", { replace: true });
   };
 
