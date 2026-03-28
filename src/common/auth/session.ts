@@ -25,7 +25,7 @@ const getStorage = () => {
     return null;
   }
 
-  return window.sessionStorage;
+  return window.localStorage;
 };
 
 const isSessionShape = (value: unknown): value is AuthSession => {
