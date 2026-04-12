@@ -1,15 +1,7 @@
 // /pages/chat/components/sidebar/index.tsx
-import {
-  useEffect,
-  useMemo,
-  useState,
-  useCallback,
-  useRef,
-  useLayoutEffect,
-} from "react";
+import { useEffect, useMemo, useState, useCallback, useRef, useLayoutEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { BsFillMoonFill, BsMoon } from "react-icons/bs";
-import styled from "styled-components";
 import InfiniteScroll from "react-infinite-scroll-component";
 import axios from "axios";
 
@@ -22,12 +14,19 @@ import { Inbox } from "common/types/common.type";
 import { useChatContext } from "pages/chat/context/chat";
 import {
   Actions,
+  Caret,
   ContactContainer,
   EndMessage,
   Header,
+  HeaderActionButton,
+  HeaderTitle,
+  HeaderTop,
+  LineSelect,
+  LineSelectWrap,
   Loader,
   SidebarContainer,
   ThemeIconContainer,
+  WaSelectorRow,
 } from "./styles";
 
 import Modal from "@mui/material/Modal";
@@ -39,8 +38,7 @@ import { clearAuthSession } from "common/auth/session";
 // ------------------------------
 // Helpers (normalize + safe parse)
 // ------------------------------
-const normBool = (v: any): boolean =>
-  v === true || v === 1 || v === "1" || v === "true";
+const normBool = (v: any): boolean => v === true || v === 1 || v === "1" || v === "true";
 
 const toMillis = (v?: string | null): number => {
   if (!v) return 0;
@@ -54,80 +52,9 @@ const toMillis = (v?: string | null): number => {
 };
 
 const pick = <T,>(obj: any, keys: string[], fallback?: T): T | undefined =>
-  keys.reduce<any>((acc, k) => (acc !== undefined ? acc : obj?.[k]), undefined) ??
-  fallback;
+  keys.reduce<any>((acc, k) => (acc !== undefined ? acc : obj?.[k]), undefined) ?? fallback;
 
 type WaLine = { id: string; number?: string };
-
-// ------------------------------
-// Styled (module scope)
-// ------------------------------
-const LineSelectWrap = styled.div`
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  margin-right: 8px;
-`;
-
-const LineSelect = styled.select<{ $mode: "light" | "dark" }>`
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-
-  min-width: 100px;
-  max-width: 200px;
-  padding: 8px 36px 8px 12px;
-  border-radius: 10px;
-  border: 1px solid
-    ${({ $mode }) =>
-      $mode === "light" ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.25)"};
-  background: ${({ $mode }) =>
-    $mode === "light" ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.06)"};
-  color: ${({ $mode }) => ($mode === "light" ? "#1f2937" : "#e5e7eb")};
-  outline: none;
-  transition: box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
-
-  &:hover {
-    border-color: ${({ $mode }) =>
-      $mode === "light" ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.38)"};
-  }
-
-  &:focus {
-    box-shadow: 0 0 0 3px
-      ${({ $mode }) =>
-        $mode === "light"
-          ? "rgba(59,130,246,0.35)"
-          : "rgba(96,165,250,0.35)"};
-    border-color: ${({ $mode }) =>
-      $mode === "light"
-        ? "rgba(59,130,246,0.9)"
-        : "rgba(96,165,250,0.9)"};
-  }
-
-  & > option {
-    background: ${({ $mode }) => ($mode === "light" ? "#ffffff" : "#1f2937")};
-    color: ${({ $mode }) => ($mode === "light" ? "#111827" : "#e5e7eb")};
-  }
-`;
-
-const Caret = styled.span<{ $mode: "light" | "dark" }>`
-  pointer-events: none;
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  width: 16px;
-  height: 16px;
-  transform: translateY(-50%);
-  display: inline-block;
-
-  background-image: ${({ $mode }) =>
-    `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none' stroke='${encodeURIComponent(
-      $mode === "light" ? "#374151" : "#d1d5db"
-    )}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 8 10 12 14 8'/></svg>")`};
-  background-repeat: no-repeat;
-  background-position: center;
-  opacity: 0.9;
-`;
 
 // ------------------------------
 // Component
@@ -140,8 +67,7 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
 
   const handleChangeThemeMode = () => theme.onChangeThemeMode();
 
-  const baseUrl =
-    process.env.REACT_APP_API_URL?.replace(/\/+$/, "") || "/api";
+  const baseUrl = process.env.REACT_APP_API_URL?.replace(/\/+$/, "") || "/api";
 
   // WA lines
   const [waLines, setWaLines] = useState<WaLine[]>([]);
@@ -226,8 +152,7 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
     const applyLines = (lines: WaLine[]) => {
       setWaLines(lines);
 
-      const storedId =
-        localStorage.getItem("wa:selectedId") || lines[0]?.id || "";
+      const storedId = localStorage.getItem("wa:selectedId") || lines[0]?.id || "";
       setSelectedWaId(storedId);
 
       if (storedId) {
@@ -347,14 +272,11 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
         ...waHeaders,
       };
 
-      const res = await fetch(
-        `${baseUrl}/message-inbox/${encodeURIComponent(participantId)}/pin`,
-        {
-          method: "PATCH",
-          headers,
-          body: JSON.stringify({ isPinned: next }),
-        }
-      );
+      const res = await fetch(`${baseUrl}/message-inbox/${encodeURIComponent(participantId)}/pin`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ isPinned: next }),
+      });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
@@ -399,128 +321,125 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
       data-mobile-visible={mobileVisible ? "true" : "false"}
       customStyles={{ overflow: "hidden" }}
     >
-        <Header>
+      <Header>
+        <HeaderTop>
+          <HeaderTitle>Eventory Chats</HeaderTitle>
           <Actions>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-              <div>
-                <LineSelectWrap>
-                  <LineSelect
-                    $mode={theme.mode}
-                    aria-label="Select WhatsApp line"
-                    value={selectedWaId}
-                    onChange={(e) => onChangeLine(e.target.value)}
-                  >
-                    {waLines.length === 0 && <option value="">No WA lines</option>}
-                    {waLines.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.number ? `${l.number} · ${l.id}` : l.id}
-                      </option>
-                    ))}
-                  </LineSelect>
-                  <Caret $mode={theme.mode} />
-                </LineSelectWrap>
-              </div>
+            <ThemeIconContainer
+              aria-label="Toggle theme"
+              onClick={handleChangeThemeMode}
+              type="button"
+            >
+              {theme.mode === "light" ? <BsMoon /> : <BsFillMoonFill />}
+            </ThemeIconContainer>
 
-              <button
-                aria-label="Logout"
-                onClick={handleLogout}
-                style={{ background: "none", border: "none", cursor: "pointer" }}
-              >
-                <Icon id="logout" className="icon" />
-              </button>
+            <HeaderActionButton
+              aria-label="Update Templates"
+              onClick={handleTemplateUpdate}
+              type="button"
+            >
+              <Icon id="sync" className="icon" />
+            </HeaderActionButton>
 
-              <button
-                aria-label="Update Templates"
-                onClick={handleTemplateUpdate}
-                style={{ background: "none", border: "none", cursor: "pointer" }}
-              >
-                <Icon id="sync" className="icon" />
-              </button>
-
-              <ThemeIconContainer onClick={handleChangeThemeMode}>
-                {theme.mode === "light" ? <BsMoon /> : <BsFillMoonFill />}
-              </ThemeIconContainer>
-            </div>
+            <HeaderActionButton aria-label="Logout" onClick={handleLogout} type="button">
+              <Icon id="logout" className="icon" />
+            </HeaderActionButton>
           </Actions>
-        </Header>
+        </HeaderTop>
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            padding: "0 8px",
+        <WaSelectorRow>
+          <LineSelectWrap>
+            <LineSelect
+              $mode={theme.mode}
+              aria-label="Select WhatsApp line"
+              value={selectedWaId}
+              onChange={(e) => onChangeLine(e.target.value)}
+            >
+              {waLines.length === 0 && <option value="">No WA lines</option>}
+              {waLines.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.number ? `${l.number} · ${l.id}` : l.id}
+                </option>
+              ))}
+            </LineSelect>
+            <Caret $mode={theme.mode} />
+          </LineSelectWrap>
+        </WaSelectorRow>
+      </Header>
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          padding: "0 8px",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <SearchField />
+        </div>
+        <div>
+          <ToggleSearch />
+        </div>
+      </div>
+
+      <ContactContainer id="scrollableDiv" ref={scrollRef} onScroll={saveScroll}>
+        <InfiniteScroll
+          dataLength={sortedInbox.length}
+          next={chatCtx.loadMore}
+          hasMore={chatCtx.hasMore}
+          loader={<Loader>Loading..</Loader>}
+          endMessage={<EndMessage>No more chats</EndMessage>}
+          scrollableTarget="scrollableDiv"
+        >
+          {sortedInbox.map((inbox) => (
+            <InboxContact
+              key={inbox.id}
+              inbox={inbox}
+              isActive={inbox.id === chatCtx.activeChat?.id}
+              onChangeChat={handleChangeChat}
+              onTogglePin={togglePin}
+            />
+          ))}
+        </InfiniteScroll>
+      </ContactContainer>
+
+      <Modal
+        open={showUpdateModal}
+        onClose={() => setShowUpdateModal(false)}
+        aria-labelledby="update-templates-title"
+        aria-describedby="update-templates-description"
+      >
+        <Box
+          sx={{
+            position: "absolute" as const,
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            bgcolor: "#323739",
+            border: "2px solid #000",
+            boxShadow: 24,
+            p: 4,
+            borderRadius: 2,
+            color: "#fff",
+            minWidth: 300,
           }}
         >
-          <div style={{ flex: 1 }}>
-            <SearchField />
-          </div>
-          <div>
-            <ToggleSearch />
-          </div>
-        </div>
-
-        <ContactContainer
-          id="scrollableDiv"
-          ref={scrollRef}
-          onScroll={saveScroll}
-        >
-          <InfiniteScroll
-            dataLength={sortedInbox.length}
-            next={chatCtx.loadMore}
-            hasMore={chatCtx.hasMore}
-            loader={<Loader>Loading..</Loader>}
-            endMessage={<EndMessage>No more chats</EndMessage>}
-            scrollableTarget="scrollableDiv"
+          <Typography id="update-templates-title" variant="h6" sx={{ mb: 2 }}>
+            Template Update
+          </Typography>
+          <Typography id="update-templates-description" sx={{ mb: 3 }}>
+            {updateMessage}
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => setShowUpdateModal(false)}
+            sx={{ backgroundColor: "#555" }}
           >
-            {sortedInbox.map((inbox) => (
-              <InboxContact
-                key={inbox.id}
-                inbox={inbox}
-                isActive={inbox.id === chatCtx.activeChat?.id}
-                onChangeChat={handleChangeChat}
-                onTogglePin={togglePin}
-              />
-            ))}
-          </InfiniteScroll>
-        </ContactContainer>
-
-        <Modal
-          open={showUpdateModal}
-          onClose={() => setShowUpdateModal(false)}
-          aria-labelledby="update-templates-title"
-          aria-describedby="update-templates-description"
-        >
-          <Box
-            sx={{
-              position: "absolute" as const,
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              bgcolor: "#323739",
-              border: "2px solid #000",
-              boxShadow: 24,
-              p: 4,
-              borderRadius: 2,
-              color: "#fff",
-              minWidth: 300,
-            }}
-          >
-            <Typography id="update-templates-title" variant="h6" sx={{ mb: 2 }}>
-              Template Update
-            </Typography>
-            <Typography id="update-templates-description" sx={{ mb: 3 }}>
-              {updateMessage}
-            </Typography>
-            <Button
-              variant="contained"
-              onClick={() => setShowUpdateModal(false)}
-              sx={{ backgroundColor: "#555" }}
-            >
-              Close
-            </Button>
-          </Box>
-        </Modal>
-      </SidebarContainer>
+            Close
+          </Button>
+        </Box>
+      </Modal>
+    </SidebarContainer>
   );
 }

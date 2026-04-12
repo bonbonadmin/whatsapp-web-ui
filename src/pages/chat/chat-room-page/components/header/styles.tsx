@@ -5,10 +5,10 @@ export const Container = styled.div`
   background: ${(props) => props.theme.common.primaryColor};
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  height: 69px;
-  padding: 12px 10px;
-  min-height: 69px;
+  align-items: flex-end;
+  height: 104px;
+  padding: 12px 16px 14px;
+  min-height: 104px;
   /* should refactor to header  */
 
   z-index: 10;
@@ -79,11 +79,13 @@ export const ProfileWrapper = styled.div<{ onClick: any }>`
   flex: 1;
   cursor: pointer;
   min-width: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 
   @media screen and (max-width: 767px) {
     min-height: 44px;
-    display: flex;
-    flex-direction: column;
     justify-content: center;
   }
 `;
