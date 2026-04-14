@@ -25,7 +25,7 @@ import styled, { css } from "styled-components";
 //   }
 // `;
 export const Container = styled.aside<{ readonly isOpen: boolean }>`
-  width: ${(props) => (props.isOpen ? '20%' : '0')};
+  width: ${(props) => (props.isOpen ? "20%" : "0")};
   display: flex;
   flex-direction: column;
   transition: width 0.3s ease;
@@ -36,7 +36,7 @@ export const Container = styled.aside<{ readonly isOpen: boolean }>`
   @media screen and (max-width: 1024px) {
     position: absolute;
     left: 0;
-    width: ${(props) => (props.isOpen ? '80%' : '0')};
+    width: ${(props) => (props.isOpen ? "80%" : "0")};
     height: 100%;
     z-index: 10;
     transition: width 0.3s ease;
@@ -53,26 +53,27 @@ export const Container = styled.aside<{ readonly isOpen: boolean }>`
 `;
 
 export const Header = styled.header`
-  /* common header */
   background: ${(props) => props.theme.common.primaryColor};
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 60px;
-  padding: 10px;
-  min-height: 60px;
-  /* common header */
+  align-items: flex-end;
+  height: 104px;
+  padding: 12px 16px 14px;
+  min-height: 104px;
 
   @media screen and (max-width: 767px) {
-    padding-top: calc(10px + env(safe-area-inset-top));
-    min-height: 68px;
+    padding-top: calc(12px + env(safe-area-inset-top));
+    min-height: 112px;
   }
 `;
 
 export const CloseButton = styled.button<{ onClick: any }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+
   .icon {
     color: ${(props) => props.theme.common.subHeadingColor};
-    margin-right: 10px;
   }
 `;
 
