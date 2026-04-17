@@ -2,7 +2,7 @@ import { useAppTheme } from "common/theme";
 import { clearAuthSession, createAuthSession, isAuthenticated } from "common/auth/session";
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import bcrypt from "bcryptjs/dist/bcrypt";
+import bcrypt from "bcryptjs-react";
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
