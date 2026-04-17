@@ -132,11 +132,17 @@ export const MessageWrapper = styled.div`
   }
 `;
 
-export const MessageStatusIcon = styled(Icon)<{ isRead?: boolean }>`
+export const MessageStatusIcon = styled(Icon)<{ isRead?: boolean; isFailed?: boolean }>`
   ${(props) =>
     props.isRead &&
     css`
       color: ${(props) => props.theme.common.readIconColor};
+    `};
+
+  ${(props) =>
+    props.isFailed &&
+    css`
+      color: ${(props) => props.theme.common.failedIconColor};
     `};
 `;
 

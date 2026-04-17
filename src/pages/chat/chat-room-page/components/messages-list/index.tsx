@@ -236,6 +236,7 @@ const SingleMessage = forwardRef((props: { message: Message, isHighlighted?: boo
   const { message, isHighlighted } = props;
   const [isModalOpen, setModalOpen] = useState(false); // State for modal visibility
   const baseURL = process.env.REACT_APP_API_URL ?? "";
+  const closeModal = () => setModalOpen(false);
   // Determine the full URL for media
   const mediaUrl =
     message.mediaLocation?.startsWith("http://") || message.mediaLocation?.startsWith("https://")
@@ -245,6 +246,19 @@ const SingleMessage = forwardRef((props: { message: Message, isHighlighted?: boo
   const fileName = message.mediaLocation
     ? message.mediaLocation.substring(message.mediaLocation.lastIndexOf('/') + 1)
     : "";
+
+  useEffect(() => {
+    if (!isModalOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeModal();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isModalOpen]);
 
   return (
     <>
@@ -344,8 +358,11 @@ const SingleMessage = forwardRef((props: { message: Message, isHighlighted?: boo
 
       {/* Modal for Image Preview */}
       {isModalOpen && (
-        <div style={modalStyles.overlay} onClick={() => setModalOpen(false)}>
-          <div style={modalStyles.modalContent} onClick={(e) => e.stopPropagation()}>
+        <div style={modalStyles.overlay} onClick={closeModal}>
+          <div style={modalStyles.modalContent} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Image preview">
+            <button type="button" style={modalStyles.closeButton} onClick={closeModal} aria-label="Close image preview">
+              ×
+            </button>
             <img
               src={mediaUrl}
               alt="Preview"
@@ -372,6 +389,7 @@ const modalStyles: Record<string, CSSProperties> = {
     zIndex: 1000,
   },
   modalContent: {
+    position: "relative",
     padding: "0", // Remove padding
     borderRadius: "10px",
     maxWidth: "60%", // Limit modal width
@@ -383,9 +401,26 @@ const modalStyles: Record<string, CSSProperties> = {
     backgroundColor: "transparent", // Make the background transparent
   },
   image: {
-    maxWidth: "50%", // Ensure the image fits within the modal
-    maxHeight: "50%", // Ensure the image fits within the modal
+    maxWidth: "100%", // Ensure the image fits within the modal
+    maxHeight: "100%", // Ensure the image fits within the modal
     objectFit: "contain", // Scale the image while maintaining aspect ratio
     borderRadius: "8px", // Optional rounded corners
+  },
+  closeButton: {
+    position: "absolute",
+    top: "-44px",
+    right: 0,
+    width: "36px",
+    height: "36px",
+    border: "none",
+    borderRadius: "999px",
+    backgroundColor: "rgba(255, 255, 255, 0.18)",
+    color: "#fff",
+    fontSize: "26px",
+    lineHeight: 1,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
 };

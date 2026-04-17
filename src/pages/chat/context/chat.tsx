@@ -239,6 +239,10 @@ export default function ChatProvider(props: { children: any }) {
 
           const newInbox: Inbox[] = [];
           response.data.data.forEach((value: InboxResponse) => {
+            const normalizedLastMessageStatus = String(
+              value.last_message_status ?? ""
+            ).toLowerCase();
+
             const timeStamp =
               new Date().toDateString() === new Date(value.created_at).toDateString()
                 ? new Date(value.created_at).toLocaleTimeString([], {
@@ -259,6 +263,14 @@ export default function ChatProvider(props: { children: any }) {
                   : value.message_text,
               timestamp: timeStamp,
               messageStatus: value.message_status === 1 ? "READ" : "DELIVERED",
+              lastMessageStatus:
+                normalizedLastMessageStatus === "read" ||
+                normalizedLastMessageStatus === "delivered" ||
+                normalizedLastMessageStatus === "sent" ||
+                normalizedLastMessageStatus === "failed"
+                  ? normalizedLastMessageStatus
+                  : undefined,
+              fromMe: value.from_me,
               notificationsCount: value.unread_msg,
               isPinned: value.is_pinned,
               pinnedAt: value.pinned_at || null,

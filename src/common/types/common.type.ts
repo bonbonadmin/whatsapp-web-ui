@@ -22,6 +22,8 @@ export type Inbox = {
   lastMessage?: string;
   timestamp?: string;
   messageStatus?: string;
+  lastMessageStatus?: MessageStatus;
+  fromMe?: number;
   notificationsCount?: number;
   isPinned?: boolean;
   pinnedAt?: string | null;
@@ -36,6 +38,7 @@ export type InboxResponse = {
   from_me: number;
   message_text: string;
   message_status: number;
+  last_message_status?: MessageStatus | string | null;
   display_phone_number: string;
   is_pinned?: boolean;
   pinned_at?: string | null;

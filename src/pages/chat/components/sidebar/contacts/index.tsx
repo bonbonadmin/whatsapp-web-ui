@@ -3,8 +3,6 @@ import { useState } from "react";
 import Icon from "common/components/icons";
 import { Inbox } from "common/types/common.type";
 import {
-  Avatar,
-  AvatarWrapper,
   BottomContent,
   Contact,
   Content,
@@ -25,8 +23,8 @@ type InboxContactProps = {
 };
 
 export default function InboxContact(props: InboxContactProps) {
-  const { inbox, onChangeChat, isActive, onTogglePin } = props;
-  const { name, lastMessage, image, timestamp } = props.inbox;
+  const { onChangeChat, isActive, onTogglePin } = props;
+  const { name, lastMessage, timestamp } = props.inbox;
 
   // put this below the imports, above `export default function InboxContact`
   function toLocalInboxTime(input: string | number | Date): string {
@@ -60,17 +58,6 @@ export default function InboxContact(props: InboxContactProps) {
       ? d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) // local TZ
       : d.toLocaleDateString(undefined, { month: "short", day: "2-digit" });
   }
-
-  // Inline, no helper:
-  const rawTime =
-    (inbox as any).timestamp ??
-    (inbox as any).created_at ??
-    (inbox as any).updated_at ??
-    (inbox as any).createdAt ??
-    (inbox as any).updatedAt ??
-    "";
-
-  const displayTime = String(rawTime).replace("T", " ").slice(0, 19); // "YYYY-MM-DD HH:mm:ss"
 
   const [hovered, setHovered] = useState(false);
 
@@ -121,15 +108,59 @@ export default function InboxContact(props: InboxContactProps) {
   );
 }
 
-function Message(props: Pick<Inbox, "messageStatus" | "lastMessage">) {
-  const { lastMessage, messageStatus } = props;
+type SidebarMessageVisual = {
+  iconId: "doubleTick" | "cross";
+  isRead: boolean;
+  isFailed: boolean;
+};
+
+function getSidebarMessageVisual(
+  fromMe?: number,
+  lastMessageStatus?: Inbox["lastMessageStatus"]
+): SidebarMessageVisual {
+  if (fromMe === 0) {
+    return {
+      iconId: "doubleTick",
+      isRead: true,
+      isFailed: false,
+    };
+  }
+
+  if (lastMessageStatus === "read") {
+    return {
+      iconId: "doubleTick",
+      isRead: true,
+      isFailed: false,
+    };
+  }
+
+  if (lastMessageStatus === "delivered") {
+    return {
+      iconId: "doubleTick",
+      isRead: false,
+      isFailed: false,
+    };
+  }
+
+  return {
+    iconId: "cross",
+    isRead: false,
+    isFailed: true,
+  };
+}
+
+function Message(props: Pick<Inbox, "lastMessage" | "lastMessageStatus" | "fromMe">) {
+  const { lastMessage, lastMessageStatus, fromMe } = props;
   if (!lastMessage) return <></>;
+
+  const statusVisual = getSidebarMessageVisual(fromMe, lastMessageStatus);
 
   return (
     <>
       <MessageStatusIcon
-        isRead={messageStatus === "READ"}
-        id={messageStatus === "SENT" ? "singleTick" : "doubleTick"}
+        isRead={statusVisual.isRead}
+        isFailed={statusVisual.isFailed}
+        id={statusVisual.iconId}
       />
       <Subtitle>{lastMessage}</Subtitle>
     </>
