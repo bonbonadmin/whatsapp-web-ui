@@ -56,14 +56,18 @@ const attachButtons = [
 const modalStyle = {
   position: "absolute" as const,
   top: "50%",
-  left: "60%",
+  left: "50%",
   transform: "translate(-50%, -50%)",
-  width: 700,
+  width: "min(700px, calc(100vw - 24px))",
+  maxWidth: "calc(100vw - 24px)",
+  maxHeight: "calc(100vh - 24px)",
   bgcolor: "#323739",
   border: "2px solid #000",
   boxShadow: 24,
-  p: 4,
-  borderRadius: "20px",
+  p: { xs: 2, sm: 3, md: 4 },
+  borderRadius: { xs: "16px", sm: "20px" },
+  overflowY: "auto",
+  boxSizing: "border-box",
 };
 
 export default function Footer() {
@@ -97,6 +101,7 @@ export default function Footer() {
 
   const hiddenUploadImage = React.useRef<HTMLInputElement>(null);
   const hiddenUploadDoc = React.useRef<HTMLInputElement>(null);
+  const messageInputRef = useRef<HTMLTextAreaElement>(null);
 
   const chatCtx = useChatContext();
   const baseUrl = process.env.REACT_APP_API_URL ?? "";
@@ -143,6 +148,7 @@ export default function Footer() {
       setMessageValue("");
       setFileUpload(undefined);
       setOpen(false);
+      messageInputRef.current?.focus();
     } else {
       const newMsg: MessageTextPayload = {
         to: chatCtx.activeChat?.participantId,
@@ -152,6 +158,7 @@ export default function Footer() {
       };
       chatCtx.onSendMessage(newMsg);
       setMessageValue("");
+      messageInputRef.current?.focus();
     }
   };
 
@@ -374,10 +381,10 @@ export default function Footer() {
     }
   };
 
-  const handleKeyDown = (event: any) => {
-    if (event.keyCode === 13 && !event.shiftKey) {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
       submitMessage();
-      return false;
     }
   };
 
@@ -427,6 +434,7 @@ export default function Footer() {
         </ButtonsContainer>
       </IconsWrapper>
       <TextArea
+        ref={messageInputRef}
         value={messageValue}
         name="message"
         onChange={(e) => setMessageValue(e.target.value)}
@@ -456,10 +464,10 @@ export default function Footer() {
         <Box
           sx={{
             ...modalStyle,
-            width: 500,
+            width: "min(500px, calc(100vw - 24px))",
             bgcolor: "#323739",
             color: "#fff",
-            p: 3,
+            p: { xs: 2, sm: 3 },
             borderRadius: 2,
             display: "flex",
             flexDirection: "column",
@@ -490,13 +498,30 @@ export default function Footer() {
           setAiRole("user");
         }}
       >
-        <Box sx={{ ...modalStyle, width: 500, bgcolor: "#323739", color: "#fff", p: 3, borderRadius: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+        <Box
+          sx={{
+            ...modalStyle,
+            width: "min(500px, calc(100vw - 24px))",
+            bgcolor: "#323739",
+            color: "#fff",
+            p: { xs: 2, sm: 3 },
+            borderRadius: 2,
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+          }}
+        >
           <Typography variant="h6">Manual AI</Typography>
 
           {/* Mode */}
           <FormControl component="fieldset" variant="standard">
             <FormLabel component="legend" sx={{ color: "#ccc" }}>Mode</FormLabel>
-            <RadioGroup row value={aiMode} onChange={(e) => setAiMode(e.target.value as "message" | "trigger")}>
+            <RadioGroup
+              row
+              value={aiMode}
+              onChange={(e) => setAiMode(e.target.value as "message" | "trigger")}
+              sx={{ flexWrap: "wrap", rowGap: 1 }}
+            >
               <FormControlLabel value="message" control={<Radio />} label="Message" sx={{ color: "#fff" }} />
               <FormControlLabel value="trigger" control={<Radio />} label="Trigger tool" sx={{ color: "#fff" }} />
             </RadioGroup>
@@ -507,7 +532,12 @@ export default function Footer() {
             <>
               <FormControl component="fieldset" variant="standard">
                 <FormLabel component="legend" sx={{ color: "#ccc" }}>Post as</FormLabel>
-                <RadioGroup row value={aiRole} onChange={(e) => setAiRole(e.target.value as "user" | "assistant" | "developer")}>
+                <RadioGroup
+                  row
+                  value={aiRole}
+                  onChange={(e) => setAiRole(e.target.value as "user" | "assistant" | "developer")}
+                  sx={{ flexWrap: "wrap", rowGap: 1 }}
+                >
                   <FormControlLabel value="user" control={<Radio />} label="User" sx={{ color: "#fff" }} />
                   <FormControlLabel value="assistant" control={<Radio />} label="Assistant" sx={{ color: "#fff" }} />
                   <FormControlLabel value="developer" control={<Radio />} label="Developer" sx={{ color: "#fff" }} />
@@ -528,7 +558,12 @@ export default function Footer() {
             <>
               <FormControl component="fieldset" variant="standard">
                 <FormLabel component="legend" sx={{ color: "#ccc" }}>Function</FormLabel>
-                <RadioGroup row value={toolName} onChange={(e) => setToolName(e.target.value as "send_rsvp" | "get_rsvp_rule" | "")}>
+                <RadioGroup
+                  row
+                  value={toolName}
+                  onChange={(e) => setToolName(e.target.value as "send_rsvp" | "get_rsvp_rule" | "")}
+                  sx={{ flexWrap: "wrap", rowGap: 1 }}
+                >
                   <FormControlLabel value="send_rsvp" control={<Radio />} label="send_rsvp" sx={{ color: "#fff" }} />
                   <FormControlLabel value="get_rsvp_rule" control={<Radio />} label="get_rsvp_rule" sx={{ color: "#fff" }} />
                 </RadioGroup>
@@ -569,9 +604,8 @@ export default function Footer() {
             color: "#fff",
             display: "flex",
             flexDirection: "column",
-            maxHeight: "80vh",
-            overflowY: "auto",
-            width: 700,
+            maxHeight: "calc(100vh - 24px)",
+            width: "min(700px, calc(100vw - 24px))",
           }}
         >
           {!selectedTemplate ? (
@@ -661,8 +695,16 @@ export default function Footer() {
               {/* Variables for BODY {{n}} */}
               <Box sx={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 2, mt: 2 }}>
                 {Object.entries(varInputs).map(([i, v]) => (
-                  <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <Typography sx={{ width: 120, color: "#fff" }}>{`{{${i}}}`}</Typography>
+                  <Box
+                    key={i}
+                    sx={{
+                      display: "flex",
+                      flexDirection: { xs: "column", sm: "row" },
+                      alignItems: { xs: "stretch", sm: "center" },
+                      gap: 2,
+                    }}
+                  >
+                    <Typography sx={{ width: { xs: "auto", sm: 120 }, color: "#fff" }}>{`{{${i}}}`}</Typography>
                     <Input
                       placeholder="Enter value"
                       value={v}
@@ -708,8 +750,16 @@ export default function Footer() {
                     <>
                       <Typography sx={{ color: "#fff", mt: 2 }}>URL Button Parameters</Typography>
                       {Object.entries(urlInputs).map(([i, v]) => (
-                        <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                          <Typography sx={{ width: 120, color: "#fff" }}>{`{{${i}}}`}</Typography>
+                        <Box
+                          key={i}
+                          sx={{
+                            display: "flex",
+                            flexDirection: { xs: "column", sm: "row" },
+                            alignItems: { xs: "stretch", sm: "center" },
+                            gap: 2,
+                          }}
+                        >
+                          <Typography sx={{ width: { xs: "auto", sm: 120 }, color: "#fff" }}>{`{{${i}}}`}</Typography>
                           <Input
                             placeholder="Enter value"
                             value={v}
@@ -742,14 +792,13 @@ export default function Footer() {
         <Box
           sx={{
             ...modalStyle,
-            width: 600,
+            width: "min(600px, calc(100vw - 24px))",
             color: "#fff",
-            p: 3,
+            p: { xs: 2, sm: 3 },
             display: "flex",
             flexDirection: "column",
             gap: 2,
-            maxHeight: "70vh",
-            overflowY: "auto",
+            maxHeight: "calc(100vh - 24px)",
           }}
         >
           <Typography variant="h6" sx={{ mb: 1 }}>

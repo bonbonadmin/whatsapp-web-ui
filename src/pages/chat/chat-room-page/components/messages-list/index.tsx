@@ -236,6 +236,7 @@ const SingleMessage = forwardRef(
   (props: { message: Message; isHighlighted?: boolean; mediaUrl?: string }, ref: any) => {
     const { message, isHighlighted, mediaUrl = "" } = props;
     const [isModalOpen, setModalOpen] = useState(false);
+    const closeModal = () => setModalOpen(false);
 
     const fileName = message.mediaLocation
       ? message.mediaLocation.substring(message.mediaLocation.lastIndexOf("/") + 1)
@@ -253,6 +254,19 @@ const SingleMessage = forwardRef(
         .map((e: any) => (typeof e?.title === "string" ? e.title.trim() : ""))
         .filter(Boolean);
     }, [isFailed, (message as any).errors]);
+
+    useEffect(() => {
+      if (!isModalOpen) return;
+
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === "Escape") {
+          closeModal();
+        }
+      };
+
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [isModalOpen]);
 
     return (
       <>
@@ -352,8 +366,22 @@ const SingleMessage = forwardRef(
         </ChatMessage>
 
         {isModalOpen && (
-          <div style={modalStyles.overlay} onClick={() => setModalOpen(false)}>
-            <div style={modalStyles.modalContent} onClick={(e) => e.stopPropagation()}>
+          <div style={modalStyles.overlay} onClick={closeModal}>
+            <div
+              style={modalStyles.modalContent}
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Image preview"
+            >
+              <button
+                type="button"
+                style={modalStyles.closeButton}
+                onClick={closeModal}
+                aria-label="Close image preview"
+              >
+                ×
+              </button>
               <img src={mediaUrl} alt="Preview" style={modalStyles.image} />
             </div>
           </div>
@@ -380,6 +408,7 @@ const modalStyles: Record<string, CSSProperties> = {
     zIndex: 1000,
   },
   modalContent: {
+    position: "relative",
     padding: "0",
     borderRadius: "10px",
     maxWidth: "60%",
@@ -391,9 +420,26 @@ const modalStyles: Record<string, CSSProperties> = {
     backgroundColor: "transparent",
   },
   image: {
-    maxWidth: "50%",
-    maxHeight: "50%",
+    maxWidth: "100%",
+    maxHeight: "100%",
     objectFit: "contain",
     borderRadius: "8px",
+  },
+  closeButton: {
+    position: "absolute",
+    top: "-44px",
+    right: 0,
+    width: "36px",
+    height: "36px",
+    border: "none",
+    borderRadius: "999px",
+    backgroundColor: "rgba(255, 255, 255, 0.18)",
+    color: "#fff",
+    fontSize: "26px",
+    lineHeight: 1,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
 };

@@ -43,6 +43,7 @@ export const darkTheme: DefaultTheme = {
     tertiaryColor: "rgb(0, 175, 156)",
     readIconColor: "#0da9e5",
     unreadIconColor: "#b3b3b3",
+    failedIconColor: "rgb(223, 51, 51)",
     headerIconColor: "rgb(145, 145, 145)",
   },
   alert: {

@@ -213,6 +213,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
         const response = await axios.get(`${baseURL}/message-inbox`, { params });
 
         const pageItems: Inbox[] = (response.data?.data || []).map((v: InboxResponse) => {
+          const normalizedLastMessageStatus = String(v.last_message_status ?? "").toLowerCase();
           const created = new Date(v.created_at);
           const sameDay = new Date().toDateString() === created.toDateString();
           const timeStamp = sameDay
@@ -228,6 +229,14 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
               v.message_text.length > 50 ? v.message_text.slice(0, 49) + "...." : v.message_text,
             timestamp: timeStamp,
             messageStatus: v.message_status === 1 ? "READ" : "DELIVERED",
+            lastMessageStatus:
+              normalizedLastMessageStatus === "read" ||
+              normalizedLastMessageStatus === "delivered" ||
+              normalizedLastMessageStatus === "sent" ||
+              normalizedLastMessageStatus === "failed"
+                ? normalizedLastMessageStatus
+                : undefined,
+            fromMe: v.from_me,
             notificationsCount: v.unread_msg,
             isPinned: !!v.is_pinned,
             pinnedAt: v.pinned_at || null,

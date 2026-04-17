@@ -43,6 +43,7 @@ declare module "styled-components" {
       tertiaryColor: string;
       readIconColor: string;
       unreadIconColor: string;
+      failedIconColor: string;
       headerIconColor: string;
     };
     alert: {
