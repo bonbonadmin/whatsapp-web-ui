@@ -89,10 +89,11 @@ export const Avatar = styled.img`
 `;
 
 export const Actions = styled.div`
+  display: flex;
+  align-items: center;
   margin-right: 20px;
 
   & > * {
-    display: inline-block;
     margin-left: 25px;
     cursor: pointer;
   }
@@ -103,6 +104,31 @@ export const Actions = styled.div`
     & > * {
       margin-left: 14px;
     }
+  }
+`;
+
+export const HeaderActionButton = styled.button`
+  border: 1px solid ${(props) => props.theme.common.borderColor};
+  background: transparent;
+  color: ${(props) => props.theme.common.headerIconColor};
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    opacity 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: wait;
   }
 `;
 

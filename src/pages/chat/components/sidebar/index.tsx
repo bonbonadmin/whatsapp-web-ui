@@ -18,6 +18,7 @@ import {
   ContactContainer,
   EndMessage,
   Header,
+  HeaderActionButton,
   ImageWrapper,
   Loader,
   MobileHeaderCopy,
@@ -85,9 +86,12 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
   };
 
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [updateTitle, setUpdateTitle] = useState("Template Update");
   const [updateMessage, setUpdateMessage] = useState("");
+  const [isKnowledgeSyncing, setIsKnowledgeSyncing] = useState(false);
   const baseUrl =
     process.env.REACT_APP_API_URL?.replace(/\/+$/, "") || "/api";
+  const knowledgeBaseUrl = "https://wa-api.crystalsea.id";
 
   // ------------------------------------------------------------
   // Pin overlay (optimistic UI; we do not mutate chatCtx.inbox)
@@ -177,12 +181,45 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
 
   const handleTemplateUpdate = async () => {
     try {
+      setUpdateTitle("Template Update");
       const res = await fetch(`${baseUrl}/template-update`, { method: "GET" });
       const json = await res.json();
       setUpdateMessage(json?.message ?? "Done");
     } catch (err: any) {
       setUpdateMessage(err?.message || "Error");
     } finally {
+      setShowUpdateModal(true);
+    }
+  };
+
+  const handleKnowledgeSync = async () => {
+    setIsKnowledgeSyncing(true);
+    setUpdateTitle("Knowledge Sync");
+
+    try {
+      const res = await fetch(`${knowledgeBaseUrl}/product-knowledge/sync`, {
+        method: "POST",
+      });
+
+      const contentType = res.headers.get("content-type") || "";
+      let message = "";
+
+      if (contentType.includes("application/json")) {
+        const json = await res.json();
+        message = json?.message ?? json?.data?.message ?? "";
+      } else {
+        message = (await res.text()).trim();
+      }
+
+      if (!res.ok) {
+        throw new Error(message || `HTTP ${res.status}`);
+      }
+
+      setUpdateMessage(message || "Knowledge sync started successfully.");
+    } catch (err: any) {
+      setUpdateMessage(err?.message || "Failed to sync knowledge.");
+    } finally {
+      setIsKnowledgeSyncing(false);
       setShowUpdateModal(true);
     }
   };
@@ -215,6 +252,13 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
           >
             <Icon id="sync" className="icon" />
           </button>
+          <HeaderActionButton
+            type="button"
+            onClick={handleKnowledgeSync}
+            disabled={isKnowledgeSyncing}
+          >
+            {isKnowledgeSyncing ? "Syncing..." : "Sync Knowledge"}
+          </HeaderActionButton>
           <ThemeIconContainer onClick={handleChangeThemeMode}>
             {theme.mode === "light" ? <BsMoon /> : <BsFillMoonFill />}
           </ThemeIconContainer>
@@ -274,7 +318,7 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
           }}
         >
           <Typography id="update-templates-title" variant="h6" sx={{ mb: 2 }}>
-            Template Update
+            {updateTitle}
           </Typography>
           <Typography id="update-templates-description" sx={{ mb: 3 }}>
             {updateMessage}
