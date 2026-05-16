@@ -25,6 +25,7 @@ import FormLabel from "@mui/material/FormLabel";
 import RadioGroup from "@mui/material/RadioGroup";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Radio from "@mui/material/Radio";
+import TextField from "@mui/material/TextField";
 
 interface WhatsappComponent {
   text: string;
@@ -80,6 +81,7 @@ export default function Footer() {
 
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [templates, setTemplates] = useState<WhatsappTemplate[]>([]);
+  const [templateSearch, setTemplateSearch] = useState("");
   const [headerMediaUrl, setHeaderMediaUrl] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [varInputs, setVarInputs] = useState<Record<string, string>>({});
@@ -121,6 +123,13 @@ export default function Footer() {
     if (selectedWaId) h["x-wa-id"] = selectedWaId;
     return h;
   }, [selectedWaId]);
+  const filteredTemplates = useMemo(
+    () =>
+      templates.filter((template) =>
+        template.template_name.toLowerCase().includes(templateSearch.trim().toLowerCase())
+      ),
+    [templates, templateSearch]
+  );
 
   // fetch templates when modal opens
   useEffect(() => {
@@ -288,6 +297,7 @@ export default function Footer() {
       .then(() => {
         setShowTemplateModal(false);
         setSelectedTemplate(null);
+        setTemplateSearch("");
         setVarInputs({});
         setButtonInputs({ thumbnail_product_retailer_id: "", title: "", product_items: "" });
         setUrlInputs({});
@@ -592,6 +602,7 @@ export default function Footer() {
         onClose={() => {
           setShowTemplateModal(false);
           setSelectedTemplate(null);
+          setTemplateSearch("");
           setVarInputs({});
           setButtonInputs({ thumbnail_product_retailer_id: "", title: "", product_items: "" });
           setUrlInputs({});
@@ -610,9 +621,39 @@ export default function Footer() {
         >
           {!selectedTemplate ? (
             <>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Select a Template
-              </Typography>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: { xs: "stretch", sm: "center" },
+                  justifyContent: "space-between",
+                  flexDirection: { xs: "column", sm: "row" },
+                  gap: 2,
+                  mb: 2,
+                }}
+              >
+                <Typography variant="h6">Select a Template</Typography>
+                <TextField
+                  value={templateSearch}
+                  onChange={(event) => setTemplateSearch(event.target.value)}
+                  placeholder="Search template name"
+                  size="small"
+                  variant="outlined"
+                  sx={{
+                    width: { xs: "100%", sm: 260 },
+                    "& .MuiOutlinedInput-root": {
+                      color: "#fff",
+                      backgroundColor: "rgba(255,255,255,0.08)",
+                      "& fieldset": { borderColor: "rgba(255,255,255,0.24)" },
+                      "&:hover fieldset": { borderColor: "rgba(255,255,255,0.5)" },
+                      "&.Mui-focused fieldset": { borderColor: "#fff" },
+                    },
+                    "& .MuiInputBase-input::placeholder": {
+                      color: "rgba(255,255,255,0.72)",
+                      opacity: 1,
+                    },
+                  }}
+                />
+              </Box>
               <Box sx={{ flex: 1, overflowY: "auto" }}>
                 <Grid container spacing={2} sx={{ fontWeight: "bold", mb: 1 }}>
                   <Grid item xs={4} sx={{ color: "#fff" }}>
@@ -622,7 +663,7 @@ export default function Footer() {
                     Text
                   </Grid>
                 </Grid>
-                {templates.map((t) => {
+                {filteredTemplates.map((t) => {
                   const txt = t.all_component?.find((c) => c.type === "BODY")?.text || "";
                   return (
                     <Grid
@@ -644,13 +685,48 @@ export default function Footer() {
                 {templates.length === 0 && (
                   <Box sx={{ textAlign: "center", py: 2, color: "#fff" }}>No templates available.</Box>
                 )}
+                {templates.length > 0 && filteredTemplates.length === 0 && (
+                  <Box sx={{ textAlign: "center", py: 2, color: "#fff" }}>No templates match your search.</Box>
+                )}
               </Box>
             </>
           ) : (
             <Box sx={{ display: "flex", flexDirection: "column", flex: 1 }}>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Fill Template Variables
-              </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+                <Box
+                  component="button"
+                  type="button"
+                  aria-label="Back to templates"
+                  onClick={() => {
+                    setSelectedTemplate(null);
+                    setVarInputs({});
+                    setButtonInputs({ thumbnail_product_retailer_id: "", title: "", product_items: "" });
+                    setUrlInputs({});
+                    setHeaderMediaUrl("");
+                  }}
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 36,
+                    height: 36,
+                    p: 0,
+                    border: 0,
+                    borderRadius: "50%",
+                    color: "#fff",
+                    background: "transparent",
+                    cursor: "pointer",
+                    "&:hover": { backgroundColor: "action.hover" },
+                    "& .icon": {
+                      width: 24,
+                      height: 24,
+                    },
+                  }}
+                >
+                  <Icon id="back" className="icon" />
+                </Box>
+                <Typography variant="h6">Fill Template Variables</Typography>
+              </Box>
 
               {/* Body preview */}
               <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mb: 2, opacity: 0.8 }}>
