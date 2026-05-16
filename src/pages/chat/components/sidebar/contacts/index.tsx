@@ -107,7 +107,7 @@ export default function InboxContact(props: InboxContactProps) {
 }
 
 type SidebarMessageVisual = {
-  iconId?: "doubleTick" | "cross";
+  iconId?: "singleTick" | "doubleTick" | "cross";
   isRead: boolean;
   isFailed: boolean;
 };
@@ -126,6 +126,10 @@ function getSidebarMessageVisual(
 
   if (lastMessageStatus === "delivered") {
     return { iconId: "doubleTick", isRead: false, isFailed: false };
+  }
+
+  if (lastMessageStatus === "sent") {
+    return { iconId: "singleTick", isRead: false, isFailed: false };
   }
 
   return { iconId: "cross", isRead: false, isFailed: true };
