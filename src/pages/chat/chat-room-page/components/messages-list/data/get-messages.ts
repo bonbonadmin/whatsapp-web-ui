@@ -11,6 +11,12 @@ export type Message = {
   functionName?: string;
   functionArgs?: string | null;
   toolOutput?: any;
+  errors?: Array<{
+    title?: string;
+    message?: string;
+    code?: number;
+    error_data?: any;
+  }> | null;
   createdAtISO?: string;
 };
 
@@ -27,6 +33,12 @@ export type MessageResponse = {
   participant_message_status: string;
   display_phone_number: string;
   created_at: Date;
+  errors?: Array<{
+    title?: string;
+    message?: string;
+    code?: number;
+    error_data?: any;
+  }> | null;
 };
 
 export type ToolApiItem = {

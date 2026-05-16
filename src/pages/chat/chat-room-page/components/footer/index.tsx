@@ -24,10 +24,12 @@ import FormLabel from "@mui/material/FormLabel";
 import RadioGroup from "@mui/material/RadioGroup";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Radio from "@mui/material/Radio";
+import TextField from "@mui/material/TextField";
 
 interface WhatsappComponent {
-  text: string;
+  text?: string;
   type: string;
+  format?: string;
   buttons?: any[]; 
   example?: Record<string, any>;
 }
@@ -81,6 +83,7 @@ export default function Footer() {
 
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [templates, setTemplates] = useState<WhatsappTemplate[]>([]);
+  const [templateSearch, setTemplateSearch] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [varInputs, setVarInputs] = useState<Record<string, string>>({});
   const [buttonInputs, setButtonInputs] = useState<{
@@ -88,6 +91,7 @@ export default function Footer() {
     title: string;
     product_items: string;
   }>({ thumbnail_product_retailer_id: "", title: "", product_items: "" });
+  const [headerImageUrl, setHeaderImageUrl] = useState("");
   const [urlInputs, setUrlInputs] = useState<Record<string, string>>({});
   const [showWebhookModal, setShowWebhookModal] = useState(false);
   const [webhookMessage, setWebhookMessage] = useState("");
@@ -103,6 +107,9 @@ export default function Footer() {
 
   const chatCtx = useChatContext();
   const baseUrl = process.env.REACT_APP_API_URL;
+  const filteredTemplates = templates.filter((template) =>
+    template.template_name.toLowerCase().includes(templateSearch.trim().toLowerCase())
+  );
 
   // fetch templates when modal opens
   useEffect(() => {
@@ -156,7 +163,7 @@ export default function Footer() {
       .flatMap(c => {
         // Force the iterator to a typed array
         const matches = Array.from(
-          c.text.matchAll(/\{\{(\d+)\}\}/g) as IterableIterator<RegExpMatchArray>
+          (c.text ?? "").matchAll(/\{\{(\d+)\}\}/g) as IterableIterator<RegExpMatchArray>
         );
         // Map each RegExpMatchArray to its first capture group
         return matches.map(match => match[1]);
@@ -170,6 +177,10 @@ export default function Footer() {
     unique.forEach(idx => { initInputs[idx] = ""; });
 
     setVarInputs(initInputs);
+
+    const imageHeader = comps.find(c => c.type === "HEADER" && c.format === "IMAGE");
+    const headerHandle = imageHeader?.example?.header_handle;
+    setHeaderImageUrl(Array.isArray(headerHandle) ? headerHandle[0] ?? "" : "");
 
     //MPM vars init
     const btnGroup = comps.find(c => c.type === 'BUTTONS' && c.buttons?.some(b => b.type.toLowerCase() === 'mpm')); //NEW
@@ -202,6 +213,16 @@ export default function Footer() {
       type:"text" as const, text:v
     }));
     const payload: any[] = [];
+    const hasImageHeader = comps.some(c => c.type === "HEADER" && c.format === "IMAGE");
+    if (hasImageHeader && headerImageUrl.trim()) {
+      payload.push({
+        type: "header" as const,
+        parameters: [{
+          type: "image" as const,
+          image: { link: headerImageUrl.trim() }
+        }]
+      });
+    }
     if (params.length) payload.push({ type:"body" as const, parameters:params });
 
     // 2) BUTTONS → MPM, catalog, flow, url
@@ -252,7 +273,9 @@ export default function Footer() {
       .then(() => {
         setShowTemplateModal(false);
         setSelectedTemplate(null);
+        setTemplateSearch("");
         setVarInputs({});
+        setHeaderImageUrl("");
         setButtonInputs({ thumbnail_product_retailer_id:"", title:"", product_items:"" });
         setUrlInputs({});  
       })
@@ -516,7 +539,9 @@ export default function Footer() {
         onClose={()=>{
           setShowTemplateModal(false);
           setSelectedTemplate(null);
+          setTemplateSearch("");
           setVarInputs({});
+          setHeaderImageUrl("");
           setButtonInputs({ thumbnail_product_retailer_id:"", title:"", product_items:"" }); //NEW
           setUrlInputs({});                                                               //NEW
         }}
@@ -533,13 +558,45 @@ export default function Footer() {
         >
           {!selectedTemplate ? (
             <>
-              <Typography variant="h6" sx={{ mb:2 }}>Select a Template</Typography>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: { xs: "stretch", sm: "center" },
+                  justifyContent: "space-between",
+                  flexDirection: { xs: "column", sm: "row" },
+                  gap: 2,
+                  mb: 2,
+                }}
+              >
+                <Typography variant="h6">Select a Template</Typography>
+                <TextField
+                  value={templateSearch}
+                  onChange={(event) => setTemplateSearch(event.target.value)}
+                  placeholder="Search template name"
+                  size="small"
+                  variant="outlined"
+                  sx={{
+                    width: { xs: "100%", sm: 260 },
+                    "& .MuiOutlinedInput-root": {
+                      color: "#fff",
+                      backgroundColor: "rgba(255,255,255,0.08)",
+                      "& fieldset": { borderColor: "rgba(255,255,255,0.24)" },
+                      "&:hover fieldset": { borderColor: "rgba(255,255,255,0.5)" },
+                      "&.Mui-focused fieldset": { borderColor: "#fff" },
+                    },
+                    "& .MuiInputBase-input::placeholder": {
+                      color: "rgba(255,255,255,0.72)",
+                      opacity: 1,
+                    },
+                  }}
+                />
+              </Box>
               <Box sx={{ flex:1, overflowY:"auto" }}>
                 <Grid container spacing={2} sx={{ fontWeight:"bold", mb:1 }}>
                   <Grid item xs={4} sx={{ color:"#fff" }}>Name</Grid>
                   <Grid item xs={8} sx={{ color:"#fff" }}>Text</Grid>
                 </Grid>
-                {templates.map(t=>{
+                {filteredTemplates.map(t=>{
                   const txt = t.all_component?.find(c=>c.type==="BODY")?.text||"";
                   return (
                     <Grid
@@ -553,16 +610,78 @@ export default function Footer() {
                   );
                 })}
                 {templates.length===0 && <Box sx={{ textAlign:"center", py:2, color:"#fff" }}>No templates available.</Box>}
+                {templates.length>0 && filteredTemplates.length===0 && <Box sx={{ textAlign:"center", py:2, color:"#fff" }}>No templates match your search.</Box>}
               </Box>
             </>
           ) : (
             <Box sx={{ display:"flex", flexDirection:"column", flex:1 }}>
-              <Typography variant="h6" sx={{ mb:2 }}>Fill Template Variables</Typography>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  mb: 2,
+                }}
+              >
+                <Box
+                  component="button"
+                  type="button"
+                  aria-label="Back to templates"
+                  onClick={() => {
+                    setSelectedTemplate(null);
+                    setVarInputs({});
+                    setHeaderImageUrl("");
+                    setButtonInputs({ thumbnail_product_retailer_id:"", title:"", product_items:"" });
+                    setUrlInputs({});
+                  }}
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 36,
+                    height: 36,
+                    p: 0,
+                    border: 0,
+                    borderRadius: "50%",
+                    color: "#fff",
+                    background: "transparent",
+                    cursor: "pointer",
+                    "&:hover": { backgroundColor: "action.hover" },
+                    "& .icon": {
+                      width: 24,
+                      height: 24,
+                    },
+                  }}
+                >
+                  <Icon id="back" className="icon" />
+                </Box>
+                <Typography variant="h6">Fill Template Variables</Typography>
+              </Box>
               <Typography variant="body2" sx={{ whiteSpace:"pre-wrap", mb:2, opacity:0.8 }}>
                 { (selectedTemplate.all_component?.find(c=>c.type==="BODY")?.text)||"" }
               </Typography>
 
               <Box sx={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:2 }}>
+                {/* HEADER image input */}
+                {selectedTemplate.all_component?.some(c=>c.type==="HEADER" && c.format==="IMAGE") && (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: { xs: "column", sm: "row" },
+                      alignItems: { xs: "stretch", sm: "center" },
+                      gap: 2,
+                    }}
+                  >
+                    <Typography sx={{ width: { xs: "auto", sm: 120 }, color:"#fff" }}>Image URL</Typography>
+                    <Input
+                      placeholder="Enter image URL"
+                      value={headerImageUrl}
+                      onChange={e=>setHeaderImageUrl(e.target.value)}
+                      style={{ background:"transparent", color:"#fff" }}
+                    />
+                  </Box>
+                )}
+
                 {/* BODY inputs */}
                 {Object.entries(varInputs).map(([i,v])=>(
                   <Box

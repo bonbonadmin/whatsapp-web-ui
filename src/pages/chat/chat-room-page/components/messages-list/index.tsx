@@ -237,6 +237,12 @@ const SingleMessage = forwardRef((props: { message: Message, isHighlighted?: boo
   const [isModalOpen, setModalOpen] = useState(false); // State for modal visibility
   const baseURL = process.env.REACT_APP_API_URL ?? "";
   const closeModal = () => setModalOpen(false);
+  const isFailed = message.messageStatus === "failed";
+  const errorTitles = isFailed && Array.isArray(message.errors)
+    ? message.errors
+      .map((error) => (typeof error?.title === "string" ? error.title.trim() : ""))
+      .filter(Boolean)
+    : [];
   // Determine the full URL for media
   const mediaUrl =
     message.mediaLocation?.startsWith("http://") || message.mediaLocation?.startsWith("https://")
@@ -336,6 +342,20 @@ const SingleMessage = forwardRef((props: { message: Message, isHighlighted?: boo
           >
             {message.body}
           </span>
+        )}
+        {errorTitles.length > 0 && (
+          <div
+            style={{
+              marginTop: 6,
+              fontSize: 12,
+              lineHeight: 1.4,
+              color: "#b42318",
+              fontWeight: 600,
+              wordBreak: "break-word",
+            }}
+          >
+            {errorTitles.join(" · ")}
+          </div>
         )}
         <ChatMessageFiller />
         <ChatMessageFooter>

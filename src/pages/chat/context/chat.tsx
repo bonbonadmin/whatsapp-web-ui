@@ -170,6 +170,7 @@ export default function ChatProvider(props: { children: any }) {
                   isOpponent: value.from_me === 0 ? true : false,
                   messageType: value.message_type,
                   mediaLocation: value.media_location,
+                  errors: value.errors ?? null,
                   createdAtISO: createdAt.toISOString(),
                 };
                 chatMessages.push(data);
