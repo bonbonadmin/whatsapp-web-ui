@@ -234,7 +234,7 @@ export default function Footer() {
           ...(urlParams.length ? { parameters: urlParams } : {}),
         });
       } else if (subtype === "catalog" || subtype === "flow") {
-        payload.push({ type: "button" as const, sub_type: subtype, index: i });
+        payload.push({ type: "button" as const, sub_type: subtype === "catalog" ? "CATALOG" : subtype, index: i });
       }
     });
 
