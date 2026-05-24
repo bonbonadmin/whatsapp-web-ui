@@ -127,6 +127,36 @@ export const ThemeIconContainer = styled(HeaderActionButton)`
   }
 `;
 
+export const QueueIconContainer = styled(HeaderActionButton)`
+  svg {
+    width: 20px;
+    height: 20px;
+    fill: ${(props) => props.theme.common.headerIconColor};
+  }
+`;
+
+export const QueueModalShell = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(1180px, calc(100vw - 32px));
+  height: min(760px, calc(100dvh - 32px));
+  background: ${(props) => props.theme.unselectedChat.bg};
+  border: 1px solid ${(props) => props.theme.common.borderColor};
+  border-radius: 8px;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.38);
+  outline: none;
+  overflow: hidden;
+
+  @media screen and (max-width: 767px) {
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+    border: none;
+  }
+`;
+
 export const WaSelectorRow = styled.div`
   width: 100%;
   display: flex;

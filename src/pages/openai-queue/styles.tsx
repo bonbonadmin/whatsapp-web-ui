@@ -1,6 +1,6 @@
 import styled from "styled-components";
 
-export const Page = styled.main`
+export const Page = styled.div<{ $embedded?: boolean }>`
   width: 100%;
   min-width: 0;
   height: 100%;
@@ -8,12 +8,15 @@ export const Page = styled.main`
   color: ${(props) => props.theme.common.mainHeadingColor};
   display: flex;
   flex-direction: column;
-  border-bottom: 6px solid ${(props) => props.theme.common.tertiaryColor};
+  border-bottom: ${(props) =>
+    props.$embedded ? "none" : `6px solid ${props.theme.common.tertiaryColor}`};
+  border-radius: ${(props) => (props.$embedded ? "8px" : "0")};
+  overflow: hidden;
 `;
 
-export const Header = styled.header`
+export const Header = styled.header<{ $embedded?: boolean }>`
   flex: 0 0 auto;
-  padding: 24px 28px 18px;
+  padding: ${(props) => (props.$embedded ? "18px 20px 14px" : "24px 28px 18px")};
   background: ${(props) => props.theme.common.primaryColor};
   border-bottom: 1px solid ${(props) => props.theme.common.borderColor};
   display: flex;
@@ -59,12 +62,12 @@ export const HeaderActions = styled.div`
   }
 `;
 
-export const Body = styled.section`
+export const Body = styled.section<{ $embedded?: boolean }>`
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 18px 28px 28px;
+  padding: ${(props) => (props.$embedded ? "14px 20px 20px" : "18px 28px 28px")};
   gap: 14px;
   overflow: hidden;
 

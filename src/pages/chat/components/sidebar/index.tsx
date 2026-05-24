@@ -1,7 +1,7 @@
 // /pages/chat/components/sidebar/index.tsx
 import { useEffect, useMemo, useState, useCallback, useRef, useLayoutEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { BsFillMoonFill, BsMoon } from "react-icons/bs";
+import { BsFillMoonFill, BsListTask, BsMoon } from "react-icons/bs";
 import InfiniteScroll from "react-infinite-scroll-component";
 import axios from "axios";
 
@@ -12,6 +12,7 @@ import Icon from "common/components/icons";
 import { useAppTheme } from "common/theme";
 import { Inbox } from "common/types/common.type";
 import { useChatContext } from "pages/chat/context/chat";
+import OpenAIQueuePanel from "pages/openai-queue/panel";
 import {
   Actions,
   Caret,
@@ -24,6 +25,8 @@ import {
   LineSelect,
   LineSelectWrap,
   Loader,
+  QueueIconContainer,
+  QueueModalShell,
   SidebarContainer,
   ThemeIconContainer,
   WaSelectorRow,
@@ -211,6 +214,7 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
     navigate("/login", { replace: true });
   };
 
+  const [showQueueModal, setShowQueueModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateMessage, setUpdateMessage] = useState("");
 
@@ -333,6 +337,15 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
               {theme.mode === "light" ? <BsMoon /> : <BsFillMoonFill />}
             </ThemeIconContainer>
 
+            <QueueIconContainer
+              aria-label="OpenAI Queue"
+              title="OpenAI Queue"
+              onClick={() => setShowQueueModal(true)}
+              type="button"
+            >
+              <BsListTask />
+            </QueueIconContainer>
+
             <HeaderActionButton
               aria-label="Update Templates"
               onClick={handleTemplateUpdate}
@@ -403,6 +416,16 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
           ))}
         </InfiniteScroll>
       </ContactContainer>
+
+      <Modal
+        open={showQueueModal}
+        onClose={() => setShowQueueModal(false)}
+        aria-labelledby="openai-queue-title"
+      >
+        <QueueModalShell>
+          {showQueueModal && <OpenAIQueuePanel embedded onClose={() => setShowQueueModal(false)} />}
+        </QueueModalShell>
+      </Modal>
 
       <Modal
         open={showUpdateModal}
