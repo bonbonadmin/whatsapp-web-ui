@@ -128,7 +128,7 @@ export const CountText = styled.p`
   white-space: nowrap;
 `;
 
-export const Button = styled.button<{ $variant?: "primary" | "quiet" }>`
+export const Button = styled.button<{ $variant?: "primary" | "quiet" | "danger" }>`
   min-height: 38px;
   border-radius: 8px;
   padding: 0 14px;
@@ -139,15 +139,21 @@ export const Button = styled.button<{ $variant?: "primary" | "quiet" }>`
   font-size: 0.9rem;
   font-weight: 600;
   color: ${(props) =>
-    props.$variant === "primary" ? "#ffffff" : props.theme.common.mainHeadingColor};
+    props.$variant === "primary" || props.$variant === "danger"
+      ? "#ffffff"
+      : props.theme.common.mainHeadingColor};
   background: ${(props) =>
     props.$variant === "primary"
       ? props.theme.common.tertiaryColor
+      : props.$variant === "danger"
+      ? props.theme.common.failedIconColor
       : props.theme.common.secondaryColor};
   border: 1px solid
     ${(props) =>
       props.$variant === "primary"
         ? props.theme.common.tertiaryColor
+        : props.$variant === "danger"
+        ? props.theme.common.failedIconColor
         : props.theme.common.borderColor};
   transition: opacity 140ms ease, transform 140ms ease, border-color 140ms ease;
 
@@ -162,6 +168,14 @@ export const Button = styled.button<{ $variant?: "primary" | "quiet" }>`
   }
 `;
 
+export const ActionGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 310px;
+`;
+
 export const TableShell = styled.div`
   flex: 1;
   min-height: 0;
@@ -173,7 +187,7 @@ export const TableShell = styled.div`
 export const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
-  min-width: 1120px;
+  min-width: 1360px;
 `;
 
 export const Th = styled.th`
@@ -227,18 +241,26 @@ export const Badge = styled.span`
   white-space: nowrap;
 `;
 
-export const Message = styled.div<{ $tone?: "error" | "empty" }>`
+export const Message = styled.div<{ $tone?: "error" | "empty" | "success" }>`
   flex: 0 0 auto;
   border: 1px solid
     ${(props) =>
       props.$tone === "error"
         ? props.theme.common.failedIconColor
+        : props.$tone === "success"
+        ? props.theme.common.tertiaryColor
         : props.theme.common.borderColor};
   background: ${(props) =>
-    props.$tone === "error" ? "rgba(223, 51, 51, 0.1)" : props.theme.common.secondaryColor};
+    props.$tone === "error"
+      ? "rgba(223, 51, 51, 0.1)"
+      : props.$tone === "success"
+      ? "rgba(37, 211, 102, 0.14)"
+      : props.theme.common.secondaryColor};
   color: ${(props) =>
     props.$tone === "error"
       ? props.theme.common.failedIconColor
+      : props.$tone === "success"
+      ? props.theme.common.mainHeadingColor
       : props.theme.common.subHeadingColor};
   padding: 13px 14px;
   border-radius: 8px;
