@@ -26,10 +26,13 @@ type ChatContextProp = {
   searchText: string;
   searchResults: SearchResult[];
   hasMore: boolean;
+  replyTarget?: Message | null;
   onChangeChat: (chat: Inbox) => void;
   onFirstOpenChat: (condition: boolean) => void;
   onSendMessage: (message: MessagePayload) => void;
-  onUploadFile: (file: File, msg: string, type: string, nonManual: boolean) => void;
+  onUploadFile: (file: File, msg: string, type: string, nonManual: boolean, contextMessageId?: string | null) => void;
+  onReplyToMessage: (message: Message) => void;
+  onClearReplyTarget: () => void;
   onSearch: (query: string) => void;
   onToggleSearch: (toggle: boolean) => void;
   loadMore: () => void;
@@ -45,6 +48,7 @@ const initialValue: ChatContextProp = {
   searchText: "",
   searchResults: [],
   hasMore: true,
+  replyTarget: null,
   isFetchInbox: false,
   recentOrders: [],
   onChangeChat() {
@@ -54,6 +58,12 @@ const initialValue: ChatContextProp = {
     throw new Error();
   },
   onUploadFile() {
+    throw new Error();
+  },
+  onReplyToMessage() {
+    throw new Error();
+  },
+  onClearReplyTarget() {
     throw new Error();
   },
   onFirstOpenChat() {
@@ -88,6 +98,7 @@ export default function ChatProvider(props: { children: any }) {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isFetchInbox, setIsFetchInbox] = useState<boolean>(false);
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
+  const [replyTarget, setReplyTarget] = useState<Message | null>(null);
   const baseURL = process.env.REACT_APP_API_URL;
 
   const activeChatRef = useRef(activeChat);
@@ -114,6 +125,7 @@ export default function ChatProvider(props: { children: any }) {
 
   const handleChangeChat = (chat: Inbox) => {
     setActiveChat(chat);
+    setReplyTarget(null);
     fetchMessages(chat.participantId);
   };
 
@@ -130,9 +142,11 @@ export default function ChatProvider(props: { children: any }) {
         mediaId: msg.mediaId ?? null,
         filePath: msg.filePath ?? null,
         nonManual: msg.nonManual ?? false,
+        contextMessageId: msg.contextMessageId ?? null,
       };
 
       await axios.post(`${baseURL}/message/send`, payload);
+      setReplyTarget(null);
       fetchMessages(msg.to);
     } catch (error) {
       console.error("Error fetching messages list:", error);
@@ -184,6 +198,7 @@ export default function ChatProvider(props: { children: any }) {
                       });
                 const data: Message = {
                   id: value.id,
+                  messageId: value.message_id ?? null,
                   body: value.message_text,
                   date: createdAt.toLocaleDateString(),
                   timestamp: timeStamp,
@@ -444,7 +459,7 @@ export default function ChatProvider(props: { children: any }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleFileUpload = async (file: File, msg: string, type: string, nonManual: boolean) => {
+  const handleFileUpload = async (file: File, msg: string, type: string, nonManual: boolean, contextMessageId?: string | null) => {
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -464,10 +479,12 @@ export default function ChatProvider(props: { children: any }) {
         mediaId: uploadMedia.data.mediaId,
         filePath: uploadMedia.data.filePath,
         nonManual,
+        contextMessageId: contextMessageId ?? null,
       };
       console.log(payload);
 
       await axios.post(`${baseURL}/message/send`, payload);
+      setReplyTarget(null);
       fetchMessages(activeChat?.participantId);
     } catch (error) {
       console.error("Error upload image", error);
@@ -485,11 +502,14 @@ export default function ChatProvider(props: { children: any }) {
         searchText,
         searchResults,
         hasMore,
+        replyTarget,
         isFetchInbox,
         recentOrders,
         onChangeChat: handleChangeChat,
         onSendMessage: handleSendMessage,
         onUploadFile: handleFileUpload,
+        onReplyToMessage: setReplyTarget,
+        onClearReplyTarget: () => setReplyTarget(null),
         onFirstOpenChat: handleFirstOpenChat,
         onSearch: handleSearch,
         onToggleSearch: handleToggleSearch,

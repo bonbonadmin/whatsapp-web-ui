@@ -201,6 +201,34 @@ export const QuotedMessageText = styled.span`
   text-overflow: ellipsis;
 `;
 
+export const ReplyActionButton = styled.button`
+  background: rgba(255, 255, 255, 0.52);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+  color: ${(props) => props.theme.common.subHeadingColor};
+  cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 600;
+  opacity: 0;
+  padding: 2px 6px;
+  position: absolute;
+  right: 6px;
+  top: -10px;
+  transition: opacity 0.15s ease, background 0.15s ease;
+
+  ${ChatMessage}:hover &,
+  ${ChatMessage}:focus-within & {
+    opacity: 1;
+  }
+
+  &:hover,
+  &:focus-visible {
+    background: rgba(255, 255, 255, 0.82);
+    opacity: 1;
+    outline: none;
+  }
+`;
+
 export const ChatMessageFiller = styled.span`
   width: 65px;
   display: inline-block;

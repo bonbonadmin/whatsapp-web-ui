@@ -10,6 +10,11 @@ import {
   TextArea,
   Wrapper,
   ControlsWrapper,
+  ReplyTargetBar,
+  ReplyTargetText,
+  ReplyTargetAuthor,
+  ReplyTargetBody,
+  ClearReplyButton,
 } from "./styles";
 import { useChatContext } from "pages/chat/context/chat";
 import { MessageTextPayload } from "../messages-list/data/get-messages";
@@ -131,8 +136,9 @@ export default function Footer() {
   }, [showPresetModal, baseUrl]);
 
   const submitMessage = () => {
+    const contextMessageId = chatCtx.replyTarget?.messageId ?? null;
     if (open && fileUpload) {
-      chatCtx.onUploadFile(fileUpload, messageValue, uploadType, nonManual);
+      chatCtx.onUploadFile(fileUpload, messageValue, uploadType, nonManual, contextMessageId);
       setMessageValue("");
       setFileUpload(undefined);
       setOpen(false);
@@ -143,6 +149,7 @@ export default function Footer() {
         textMessage: messageValue,
         mediaType: "text",
         nonManual,
+        contextMessageId,
       };
       chatCtx.onSendMessage(newMsg);
       setMessageValue("");
@@ -369,7 +376,26 @@ export default function Footer() {
   };
 
   return (
-    <Wrapper>
+    <>
+      {chatCtx.replyTarget && (
+        <ReplyTargetBar>
+          <ReplyTargetText>
+            <ReplyTargetAuthor>
+              {chatCtx.replyTarget.isOpponent ? chatCtx.activeChat?.name || "Customer" : "You"}
+            </ReplyTargetAuthor>
+            <ReplyTargetBody>{getReplyPreviewText(chatCtx.replyTarget)}</ReplyTargetBody>
+          </ReplyTargetText>
+          <ClearReplyButton
+            type="button"
+            aria-label="Cancel reply"
+            title="Cancel reply"
+            onClick={chatCtx.onClearReplyTarget}
+          >
+            x
+          </ClearReplyButton>
+        </ReplyTargetBar>
+      )}
+      <Wrapper>
       <IconsWrapper>
         <AttachButton onClick={() => setShowIcons(!showIcons)}>
           <Icon id="attach" className="icon" />
@@ -425,6 +451,7 @@ export default function Footer() {
           <Icon id="send" className="icon" />
         </SendMessageButton>
       </ControlsWrapper>
+      </Wrapper>
 
       {/* Manual Webhook Modal */}
       <Modal
@@ -840,6 +867,28 @@ export default function Footer() {
           </Wrapper>
         </Box>
       </Modal>
-    </Wrapper>
+    </>
   );
+}
+
+function getReplyPreviewText(message: { body?: string; messageType?: string }): string {
+  const body = String(message.body || "")
+    .replace(/\s*\.\s*Image url:\s*https?:\/\/\S+/gi, "")
+    .replace(/\s*\.\s*Audio url:\s*https?:\/\/\S+/gi, "")
+    .trim();
+
+  if (body) return body;
+
+  switch (message.messageType) {
+    case "image":
+      return "Photo";
+    case "document":
+      return "Document";
+    case "audio":
+      return "Audio";
+    case "template":
+      return "Template message";
+    default:
+      return "Message";
+  }
 }

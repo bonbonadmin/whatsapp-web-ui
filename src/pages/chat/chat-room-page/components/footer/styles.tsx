@@ -17,6 +17,46 @@ export const Wrapper = styled.div`
   }
 `;
 
+export const ReplyTargetBar = styled.div`
+  align-items: center;
+  background: ${(props) => props.theme.common.secondaryColor};
+  border-left: 3px solid #25d366;
+  color: ${(props) => props.theme.common.mainHeadingColor};
+  display: flex;
+  gap: 10px;
+  margin: 0 10px;
+  padding: 7px 10px;
+`;
+
+export const ReplyTargetText = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+export const ReplyTargetAuthor = styled.div`
+  color: #128c7e;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 16px;
+`;
+
+export const ReplyTargetBody = styled.div`
+  color: ${(props) => props.theme.common.subHeadingColor};
+  font-size: 0.78rem;
+  line-height: 17px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+export const ClearReplyButton = styled.button`
+  color: ${(props) => props.theme.common.subHeadingColor};
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 3px 6px;
+`;
+
 export const iconCommonStyles = css`
   color: ${(props) => props.theme.common.subHeadingColor};
 `;

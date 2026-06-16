@@ -14,7 +14,9 @@ import {
   QuotedMessageAuthor,
   QuotedMessagePreview,
   QuotedMessageText,
+  ReplyActionButton,
 } from "./styles";
+import { useChatContext } from "pages/chat/context/chat";
 
 type MessagesListProps = {
   onShowBottomIcon: Function;
@@ -31,6 +33,7 @@ export default function MessagesList(props: MessagesListProps) {
   console.log("test to bottom", testToBottom);
 
   const params = useParams();
+  const chatCtx = useChatContext();
 
   const { containerRef } = useScrollToBottom(
     onShowBottomIcon,
@@ -103,6 +106,7 @@ export default function MessagesList(props: MessagesListProps) {
               }}
               isHighlighted={(isSearchOpen && message.id === selectedSearchId) || focusedMessageId === message.id}
               onQuotedMessageClick={scrollToMessage}
+              onReplyToMessage={chatCtx.onReplyToMessage}
             />
           )
         )}
@@ -253,8 +257,9 @@ const SingleMessage = forwardRef((props: {
   message: Message;
   isHighlighted?: boolean;
   onQuotedMessageClick?: (messageId?: string) => void;
+  onReplyToMessage?: (message: Message) => void;
 }, ref: any) => {
-  const { message, isHighlighted, onQuotedMessageClick } = props;
+  const { message, isHighlighted, onQuotedMessageClick, onReplyToMessage } = props;
   const [isModalOpen, setModalOpen] = useState(false); // State for modal visibility
   const baseURL = process.env.REACT_APP_API_URL ?? "";
   const closeModal = () => setModalOpen(false);
@@ -328,6 +333,16 @@ const SingleMessage = forwardRef((props: {
           >
             T
           </div>
+        )}
+        {message.messageId && (
+          <ReplyActionButton
+            type="button"
+            aria-label="Reply to message"
+            title="Reply to message"
+            onClick={() => onReplyToMessage?.(message)}
+          >
+            Reply
+          </ReplyActionButton>
         )}
         {quotedMessage && (
           <QuotedMessagePreview
