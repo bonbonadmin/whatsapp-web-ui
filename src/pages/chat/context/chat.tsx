@@ -27,10 +27,13 @@ type ChatContextProp = {
   searchText: string;
   searchResults: SearchResult[];
   hasMore: boolean;
+  replyTarget?: Message | null;
   onChangeChat: (chat: Inbox) => void;
   onFirstOpenChat: (condition: boolean) => void;
   onSendMessage: (message: MessagePayload) => void;
-  onUploadFile: (file: File, msg: string, type: string, nonManual: boolean) => void;
+  onUploadFile: (file: File, msg: string, type: string, nonManual: boolean, contextMessageId?: string | null) => void;
+  onReplyToMessage: (message: Message) => void;
+  onClearReplyTarget: () => void;
   onSearch: (query: string) => void;
   onToggleSearch: (toggle: boolean) => void;
   loadMore: () => void;
@@ -47,11 +50,14 @@ const initialValue: ChatContextProp = {
   searchText: "",
   searchResults: [],
   hasMore: true,
+  replyTarget: null,
   isFetchInbox: false,
   bookingEvents: undefined,
   onChangeChat() { throw new Error(); },
   onSendMessage() { throw new Error(); },
   onUploadFile() { throw new Error(); },
+  onReplyToMessage() { throw new Error(); },
+  onClearReplyTarget() { throw new Error(); },
   onFirstOpenChat() { throw new Error(); },
   onSearch() { throw new Error(); },
   onToggleSearch() { throw new Error(); },
@@ -82,6 +88,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
   const [searchResults] = useState<SearchResult[]>([]);
   const [isFetchInbox, setIsFetchInbox] = useState<boolean>(false);
   const [bookingEvents, setBookingEvents] = useState<BookingEvent[] | undefined>(undefined);
+  const [replyTarget, setReplyTarget] = useState<Message | null>(null);
 
   const baseURL = process.env.REACT_APP_API_URL;
 
@@ -165,6 +172,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
 
           return {
             id: String(v.id),
+            messageId: v.message_id ?? null,
             body: v.message_text,
             date: created.toLocaleDateString(),
             timestamp: shortTs(created),
@@ -295,6 +303,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
 
   const handleChangeChat = useCallback((chat: Inbox) => {
     setActiveChat(chat);
+    setReplyTarget(null);
     localStorage.setItem(LS_ACTIVE_CHAT, chat.participantId); // ✅ persist
     fetchMessages(chat.participantId);
   }, [fetchMessages]);
@@ -312,8 +321,10 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
         mediaId: msg.mediaId ?? null,
         filePath: msg.filePath ?? null,
         nonManual: msg.nonManual ?? false,
+        contextMessageId: msg.contextMessageId ?? null,
       };
       await axios.post(`${baseURL}/message/send`, payload);
+      setReplyTarget(null);
       if (msg.to) fetchMessages(msg.to);
     } catch (error) {
       console.error("Error sending message:", error);
@@ -392,7 +403,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
   }, [inbox, fetchMessages]);
 
   const handleFileUpload = useCallback(
-    async (file: File, msg: string, type: string, nonManual: boolean) => {
+    async (file: File, msg: string, type: string, nonManual: boolean, contextMessageId?: string | null) => {
       try {
         const formData = new FormData();
         formData.append("file", file);
@@ -414,9 +425,11 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
           mediaId: uploadMedia.data.mediaId,
           filePath: uploadMedia.data.filePath,
           nonManual,
+          contextMessageId: contextMessageId ?? null,
         };
 
         await axios.post(`${baseURL}/message/send`, payload);
+        setReplyTarget(null);
         if (activeChatRef.current?.participantId) {
           fetchMessages(activeChatRef.current.participantId);
         }
@@ -438,11 +451,14 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
         searchText,
         searchResults,
         hasMore,
+        replyTarget,
         isFetchInbox,
         bookingEvents,
         onChangeChat: handleChangeChat,
         onSendMessage: handleSendMessage,
         onUploadFile: handleFileUpload,
+        onReplyToMessage: setReplyTarget,
+        onClearReplyTarget: () => setReplyTarget(null),
         onFirstOpenChat: handleFirstOpenChat,
         onSearch: handleSearch,
         onToggleSearch: handleToggleSearch,

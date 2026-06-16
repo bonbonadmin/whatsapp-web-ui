@@ -16,6 +16,7 @@ import {
   QuotedMessageAuthor,
   QuotedMessagePreview,
   QuotedMessageText,
+  ReplyActionButton,
 } from "./styles";
 import { useChatContext } from "pages/chat/context/chat";
 
@@ -237,6 +238,7 @@ export default function MessagesList({
               isHighlighted={(isSearchOpen && message.id === selectedSearchId) || focusedMessageId === message.id}
               mediaUrl={fullMediaUrl(message.mediaLocation)}
               onQuotedMessageClick={scrollToMessage}
+              onReplyToMessage={chatCtx.onReplyToMessage}
             />
           );
         })}
@@ -254,10 +256,11 @@ const SingleMessage = forwardRef(
       isHighlighted?: boolean;
       mediaUrl?: string;
       onQuotedMessageClick?: (messageId?: string) => void;
+      onReplyToMessage?: (message: Message) => void;
     },
     ref: any
   ) => {
-    const { message, isHighlighted, mediaUrl = "", onQuotedMessageClick } = props;
+    const { message, isHighlighted, mediaUrl = "", onQuotedMessageClick, onReplyToMessage } = props;
     const [isModalOpen, setModalOpen] = useState(false);
     const closeModal = () => setModalOpen(false);
 
@@ -332,6 +335,17 @@ const SingleMessage = forwardRef(
             >
               T
             </div>
+          )}
+
+          {message.messageId && (
+            <ReplyActionButton
+              type="button"
+              aria-label="Reply to message"
+              title="Reply to message"
+              onClick={() => onReplyToMessage?.(message)}
+            >
+              Reply
+            </ReplyActionButton>
           )}
 
           {quotedMessage && (

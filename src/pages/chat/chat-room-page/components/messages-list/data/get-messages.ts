@@ -3,6 +3,7 @@ import { useEffect } from "react";
 
 export type Message = {
   id: string;
+  messageId?: string | null;
   body: string;
   date: string;
   timestamp: string;
@@ -83,6 +84,7 @@ export type MessageTextPayload = {
   textMessage?: string;
   mediaType?: string;
   nonManual?: boolean;
+  contextMessageId?: string | null;
 };
 
 export type MessagePayload = {
@@ -92,6 +94,7 @@ export type MessagePayload = {
   mediaId?: string;
   filePath?: string;
   nonManual?: boolean;
+  contextMessageId?: string | null;
 };
 
 const messages: Message[] = [
