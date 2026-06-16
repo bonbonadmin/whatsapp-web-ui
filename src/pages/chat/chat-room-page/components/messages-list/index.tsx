@@ -13,6 +13,9 @@ import {
   DateWrapper,
   EncryptionMessage,
   MessageGroup,
+  QuotedMessageAuthor,
+  QuotedMessagePreview,
+  QuotedMessageText,
 } from "./styles";
 import { useChatContext } from "pages/chat/context/chat";
 
@@ -143,6 +146,7 @@ export default function MessagesList({
   );
 
   const messageRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const [focusedMessageId, setFocusedMessageId] = useState("");
 
   useEffect(() => {
     if (selectedSearchId && selectedSearchId !== "" && isSearchOpen) {
@@ -158,6 +162,16 @@ export default function MessagesList({
       }
     }
   }, [selectedSearchId, isSearchOpen, shouldScrollToBottom, lastMessageId]);
+
+  const scrollToMessage = (messageId?: string) => {
+    if (!messageId) return;
+    const targetMessage = messageRefs.current[messageId];
+    if (!targetMessage) return;
+
+    targetMessage.scrollIntoView({ behavior: "smooth", block: "center" });
+    setFocusedMessageId(messageId);
+    window.setTimeout(() => setFocusedMessageId((current) => (current === messageId ? "" : current)), 1400);
+  };
 
   // ===== waId handling for media URLs =====
   const baseURL = (process.env.REACT_APP_API_URL ?? "").replace(/\/+$/, "");
@@ -220,8 +234,9 @@ export default function MessagesList({
               key={message.id}
               message={message}
               ref={saveRef}
-              isHighlighted={isSearchOpen && message.id === selectedSearchId}
+              isHighlighted={(isSearchOpen && message.id === selectedSearchId) || focusedMessageId === message.id}
               mediaUrl={fullMediaUrl(message.mediaLocation)}
+              onQuotedMessageClick={scrollToMessage}
             />
           );
         })}
@@ -233,8 +248,16 @@ export default function MessagesList({
 /* ----------------------- Single Message (unchanged) ----------------------- */
 
 const SingleMessage = forwardRef(
-  (props: { message: Message; isHighlighted?: boolean; mediaUrl?: string }, ref: any) => {
-    const { message, isHighlighted, mediaUrl = "" } = props;
+  (
+    props: {
+      message: Message;
+      isHighlighted?: boolean;
+      mediaUrl?: string;
+      onQuotedMessageClick?: (messageId?: string) => void;
+    },
+    ref: any
+  ) => {
+    const { message, isHighlighted, mediaUrl = "", onQuotedMessageClick } = props;
     const [isModalOpen, setModalOpen] = useState(false);
     const closeModal = () => setModalOpen(false);
 
@@ -246,6 +269,14 @@ const SingleMessage = forwardRef(
       .toLowerCase();
 
     const isFailed = message.messageStatus === "failed";
+    const quotedMessage = message.quotedMessage;
+    const hasQuotedTarget = Boolean(quotedMessage?.id && !quotedMessage.missing);
+    const quotedAuthor = quotedMessage?.missing
+      ? "Quoted message"
+      : quotedMessage?.fromMe === 1
+        ? "You"
+        : quotedMessage?.participantName || "Customer";
+    const quotedText = getQuotedMessageText(quotedMessage);
 
     const errorTitles = useMemo(() => {
       if (!isFailed) return [];
@@ -301,6 +332,18 @@ const SingleMessage = forwardRef(
             >
               T
             </div>
+          )}
+
+          {quotedMessage && (
+            <QuotedMessagePreview
+              type="button"
+              disabled={!hasQuotedTarget}
+              title={hasQuotedTarget ? "Jump to quoted message" : "Quoted message is not available"}
+              onClick={() => onQuotedMessageClick?.(quotedMessage.id)}
+            >
+              <QuotedMessageAuthor>{quotedAuthor}</QuotedMessageAuthor>
+              <QuotedMessageText>{quotedText}</QuotedMessageText>
+            </QuotedMessagePreview>
           )}
 
           {message.messageType === "image" ? (
@@ -391,6 +434,31 @@ const SingleMessage = forwardRef(
   }
 );
 SingleMessage.displayName = "SingleMessage";
+
+function getQuotedMessageText(quotedMessage?: Message["quotedMessage"]): string {
+  if (!quotedMessage) return "";
+
+  const body = String(quotedMessage.body || "")
+    .replace(/\s*\.\s*Image url:\s*https?:\/\/\S+/gi, "")
+    .replace(/\s*\.\s*Audio url:\s*https?:\/\/\S+/gi, "")
+    .trim();
+
+  if (body) return body;
+  if (quotedMessage.missing) return "Original message is not available";
+
+  switch (quotedMessage.messageType) {
+    case "image":
+      return "Photo";
+    case "document":
+      return "Document";
+    case "audio":
+      return "Audio";
+    case "template":
+      return "Template message";
+    default:
+      return "Message";
+  }
+}
 
 /* ----------------------- Modal Styles ----------------------- */
 

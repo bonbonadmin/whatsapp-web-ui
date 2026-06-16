@@ -146,8 +146,25 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
         // const rows: MessageResponse[] = Array.isArray(data?.data) ? data.data : [];
         const msgList: Message[] = rows.map((v) => {
           const created = new Date(v.created_at);
+          const contextMessageId =
+            typeof v.context_message_id === "string" && v.context_message_id.trim()
+              ? v.context_message_id.trim()
+              : null;
+          const quotedMessage = contextMessageId
+            ? {
+                id: v.quoted_message_row_id != null ? String(v.quoted_message_row_id) : undefined,
+                messageId: v.quoted_message_id || contextMessageId,
+                body: typeof v.quoted_message_text === "string" ? v.quoted_message_text : "",
+                messageType: v.quoted_message_type ?? null,
+                mediaLocation: v.quoted_media_location ?? null,
+                fromMe: v.quoted_from_me ?? null,
+                participantName: v.quoted_participant_name ?? v.quoted_participant_username ?? null,
+                missing: !v.quoted_message_id,
+              }
+            : null;
+
           return {
-            id: v.id,
+            id: String(v.id),
             body: v.message_text,
             date: created.toLocaleDateString(),
             timestamp: shortTs(created),
@@ -158,6 +175,9 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
             messageType: v.message_type,
             mediaLocation: v.media_location,
             createdAtISO: created.toISOString(),
+            contextMessageId,
+            contextFrom: v.context_from ?? null,
+            quotedMessage,
           };
         });
 
