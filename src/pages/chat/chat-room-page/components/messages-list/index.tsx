@@ -11,6 +11,9 @@ import {
   Container,
   EncryptionMessage,
   MessageGroup,
+  QuotedMessageAuthor,
+  QuotedMessagePreview,
+  QuotedMessageText,
 } from "./styles";
 
 type MessagesListProps = {
@@ -37,6 +40,7 @@ export default function MessagesList(props: MessagesListProps) {
   );
 
   const messageRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const [focusedMessageId, setFocusedMessageId] = useState("");
 
   useEffect(() => {
     if (selectedSearchId  && selectedSearchId !== '' && isSearchOpen) {
@@ -52,6 +56,18 @@ export default function MessagesList(props: MessagesListProps) {
       }
     }
   }, [selectedSearchId, isSearchOpen, shouldScrollToBottom, lastMessageId])
+
+  const scrollToMessage = (messageId?: string) => {
+    if (!messageId) return;
+    const targetMessage = messageRefs.current[messageId];
+    if (!targetMessage) return;
+
+    targetMessage.scrollIntoView({ behavior: "smooth", block: "center" });
+    setFocusedMessageId(messageId);
+    window.setTimeout(() => {
+      setFocusedMessageId((current) => (current === messageId ? "" : current));
+    }, 1400);
+  };
 
   return (
     <Container ref={containerRef}>
@@ -85,7 +101,8 @@ export default function MessagesList(props: MessagesListProps) {
               ref={(el) => {
                 messageRefs.current[message.id] = el as HTMLDivElement | null;
               }}
-              isHighlighted={isSearchOpen && message.id === selectedSearchId}
+              isHighlighted={(isSearchOpen && message.id === selectedSearchId) || focusedMessageId === message.id}
+              onQuotedMessageClick={scrollToMessage}
             />
           )
         )}
@@ -232,12 +249,24 @@ const ToolEventRow = forwardRef(
 
 ToolEventRow.displayName = "ToolEventRow";
 
-const SingleMessage = forwardRef((props: { message: Message, isHighlighted?: boolean }, ref: any) => {
-  const { message, isHighlighted } = props;
+const SingleMessage = forwardRef((props: {
+  message: Message;
+  isHighlighted?: boolean;
+  onQuotedMessageClick?: (messageId?: string) => void;
+}, ref: any) => {
+  const { message, isHighlighted, onQuotedMessageClick } = props;
   const [isModalOpen, setModalOpen] = useState(false); // State for modal visibility
   const baseURL = process.env.REACT_APP_API_URL ?? "";
   const closeModal = () => setModalOpen(false);
   const isFailed = message.messageStatus === "failed";
+  const quotedMessage = message.quotedMessage;
+  const hasQuotedTarget = Boolean(quotedMessage?.id && !quotedMessage.missing);
+  const quotedAuthor = quotedMessage?.missing
+    ? "Quoted message"
+    : quotedMessage?.fromMe === 1
+      ? "You"
+      : quotedMessage?.participantName || "Customer";
+  const quotedText = getQuotedMessageText(quotedMessage);
   const errorTitles = isFailed && Array.isArray(message.errors)
     ? message.errors
       .map((error) => (typeof error?.title === "string" ? error.title.trim() : ""))
@@ -299,6 +328,17 @@ const SingleMessage = forwardRef((props: { message: Message, isHighlighted?: boo
           >
             T
           </div>
+        )}
+        {quotedMessage && (
+          <QuotedMessagePreview
+            type="button"
+            disabled={!hasQuotedTarget}
+            title={hasQuotedTarget ? "Jump to quoted message" : "Quoted message is not available"}
+            onClick={() => onQuotedMessageClick?.(quotedMessage.id)}
+          >
+            <QuotedMessageAuthor>{quotedAuthor}</QuotedMessageAuthor>
+            <QuotedMessageText>{quotedText}</QuotedMessageText>
+          </QuotedMessagePreview>
         )}
         {message.messageType === "image" ? (
           <div>
@@ -394,6 +434,31 @@ const SingleMessage = forwardRef((props: { message: Message, isHighlighted?: boo
     </>
   );
 });
+
+function getQuotedMessageText(quotedMessage?: Message["quotedMessage"]): string {
+  if (!quotedMessage) return "";
+
+  const body = String(quotedMessage.body || "")
+    .replace(/\s*\.\s*Image url:\s*https?:\/\/\S+/gi, "")
+    .replace(/\s*\.\s*Audio url:\s*https?:\/\/\S+/gi, "")
+    .trim();
+
+  if (body) return body;
+  if (quotedMessage.missing) return "Original message is not available";
+
+  switch (quotedMessage.messageType) {
+    case "image":
+      return "Photo";
+    case "document":
+      return "Document";
+    case "audio":
+      return "Audio";
+    case "template":
+      return "Template message";
+    default:
+      return "Message";
+  }
+}
 
 const modalStyles: Record<string, CSSProperties> = {
   overlay: {

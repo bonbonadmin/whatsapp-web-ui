@@ -153,6 +153,54 @@ export const ChatMessage = styled.div`
   }
 `;
 
+export const QuotedMessagePreview = styled.button`
+  appearance: none;
+  width: 100%;
+  max-width: 360px;
+  border: 0;
+  border-left: 3px solid #25d366;
+  background: rgba(255, 255, 255, 0.42);
+  border-radius: 4px;
+  color: ${(props) => props.theme.common.mainHeadingColor};
+  cursor: default;
+  display: block;
+  font: inherit;
+  margin: 0 0 6px;
+  padding: 5px 8px 6px;
+  text-align: left;
+  white-space: normal;
+
+  &:not(:disabled) {
+    cursor: pointer;
+  }
+
+  &:not(:disabled):hover {
+    background: rgba(255, 255, 255, 0.62);
+  }
+
+  &:disabled {
+    opacity: 1;
+  }
+`;
+
+export const QuotedMessageAuthor = styled.span`
+  color: #128c7e;
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 16px;
+`;
+
+export const QuotedMessageText = styled.span`
+  color: ${(props) => props.theme.common.subHeadingColor};
+  display: block;
+  font-size: 0.78rem;
+  line-height: 17px;
+  max-height: 36px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
 export const ChatMessageFiller = styled.span`
   width: 65px;
   display: inline-block;

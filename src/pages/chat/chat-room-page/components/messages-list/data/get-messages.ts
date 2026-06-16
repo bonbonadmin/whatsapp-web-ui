@@ -18,6 +18,20 @@ export type Message = {
     error_data?: any;
   }> | null;
   createdAtISO?: string;
+  contextMessageId?: string | null;
+  contextFrom?: string | null;
+  quotedMessage?: QuotedMessage | null;
+};
+
+export type QuotedMessage = {
+  id?: string;
+  messageId: string;
+  body: string;
+  messageType?: string | null;
+  mediaLocation?: string | null;
+  fromMe?: number | null;
+  participantName?: string | null;
+  missing?: boolean;
 };
 
 export type MessageResponse = {
@@ -32,6 +46,16 @@ export type MessageResponse = {
   message_status: number;
   participant_message_status: string;
   display_phone_number: string;
+  context_message_id?: string | null;
+  context_from?: string | null;
+  context?: any;
+  quoted_message_row_id?: string | number | null;
+  quoted_message_id?: string | null;
+  quoted_message_text?: string | null;
+  quoted_message_type?: string | null;
+  quoted_media_location?: string | null;
+  quoted_from_me?: number | null;
+  quoted_participant_name?: string | null;
   created_at: Date;
   errors?: Array<{
     title?: string;

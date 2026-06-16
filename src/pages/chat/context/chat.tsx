@@ -149,6 +149,28 @@ export default function ChatProvider(props: { children: any }) {
             if (response.data.data.length) {
               response.data.data.forEach((value: MessageResponse) => {
                 const createdAt = new Date(value.created_at);
+                const contextMessageId =
+                  typeof value.context_message_id === "string" && value.context_message_id.trim()
+                    ? value.context_message_id.trim()
+                    : null;
+                const quotedMessage = contextMessageId
+                  ? {
+                      id:
+                        value.quoted_message_row_id != null
+                          ? String(value.quoted_message_row_id)
+                          : undefined,
+                      messageId: value.quoted_message_id || contextMessageId,
+                      body:
+                        typeof value.quoted_message_text === "string"
+                          ? value.quoted_message_text
+                          : "",
+                      messageType: value.quoted_message_type ?? null,
+                      mediaLocation: value.quoted_media_location ?? null,
+                      fromMe: value.quoted_from_me ?? null,
+                      participantName: value.quoted_participant_name ?? null,
+                      missing: !value.quoted_message_id,
+                    }
+                  : null;
                 const timeStamp =
                   new Date().toDateString() === createdAt.toDateString()
                     ? createdAt.toLocaleTimeString([], {
@@ -172,6 +194,9 @@ export default function ChatProvider(props: { children: any }) {
                   mediaLocation: value.media_location,
                   errors: value.errors ?? null,
                   createdAtISO: createdAt.toISOString(),
+                  contextMessageId,
+                  contextFrom: value.context_from ?? null,
+                  quotedMessage,
                 };
                 chatMessages.push(data);
               });
