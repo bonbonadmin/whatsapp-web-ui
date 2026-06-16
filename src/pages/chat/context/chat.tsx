@@ -105,7 +105,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
   
 
   const fetchMessages = useCallback(
-    async (id: string, days: number = 90) => {
+    async (id: string, days: number = 365) => {
       if (!id) return;
       try {
         const waId = localStorage.getItem("wa:selectedId") || "";
@@ -195,7 +195,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
     [baseURL]
   );
 
-  const reloadMessages = useCallback((days: number = 90) => {
+  const reloadMessages = useCallback((days: number = 365) => {
     const id = activeChatRef.current?.participantId;
     if (!id) return;
     fetchMessages(id, days);
