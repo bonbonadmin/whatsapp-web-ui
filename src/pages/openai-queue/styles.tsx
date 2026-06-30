@@ -173,7 +173,7 @@ export const ActionGroup = styled.div`
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  min-width: 310px;
+  min-width: 140px;
 `;
 
 export const TableShell = styled.div`
@@ -222,6 +222,27 @@ export const TextCell = styled.span`
   overflow: hidden;
   max-width: 320px;
   color: ${(props) => props.theme.common.mainHeadingColor};
+`;
+
+export const ParticipantButton = styled.button`
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: ${(props) => props.theme.common.tertiaryColor};
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${(props) => props.theme.common.tertiaryColor};
+    outline-offset: 3px;
+  }
 `;
 
 export const Muted = styled.span`

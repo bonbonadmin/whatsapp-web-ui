@@ -13,6 +13,7 @@ import {
   Message,
   Muted,
   Page,
+  ParticipantButton,
   Subtitle,
   Table,
   TableShell,
@@ -52,12 +53,12 @@ type CancelQueuePayload = {
   jobId?: QueuedProcess["id"];
   threadDbId?: QueuedProcess["threadDbId"];
   all?: boolean;
-  expireThread?: boolean;
 };
 
 type OpenAIQueuePanelProps = {
   embedded?: boolean;
   onClose?: () => void;
+  onParticipantClick?: (participantId: string) => void;
 };
 
 const apiBase = process.env.REACT_APP_API_URL?.replace(/\/+$/, "") || "";
@@ -98,7 +99,7 @@ const getErrorMessage = (error: unknown) => {
 };
 
 export default function OpenAIQueuePanel(props: OpenAIQueuePanelProps) {
-  const { embedded = false, onClose } = props;
+  const { embedded = false, onClose, onParticipantClick } = props;
   const [queued, setQueued] = useState<QueuedProcess[]>([]);
   const [count, setCount] = useState(0);
   const [threadFilterDraft, setThreadFilterDraft] = useState("");
@@ -106,11 +107,8 @@ export default function OpenAIQueuePanel(props: OpenAIQueuePanelProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRunAllLoading, setIsRunAllLoading] = useState(false);
   const [isCancelAllLoading, setIsCancelAllLoading] = useState(false);
-  const [isCancelAllExpireLoading, setIsCancelAllExpireLoading] = useState(false);
   const [runningRows, setRunningRows] = useState<Record<string, boolean>>({});
   const [cancellingRows, setCancellingRows] = useState<Record<string, boolean>>({});
-  const [cancellingThreads, setCancellingThreads] = useState<Record<string, boolean>>({});
-  const [expiringThreads, setExpiringThreads] = useState<Record<string, boolean>>({});
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -252,50 +250,20 @@ export default function OpenAIQueuePanel(props: OpenAIQueuePanelProps) {
     }
   };
 
-  const cancelThread = async (row: QueuedProcess, expireThread = false) => {
-    const threadKey = String(row.threadDbId);
-    const confirmMessage = expireThread
-      ? `Cancel queued jobs for thread ${row.threadDbId} and expire the thread?`
-      : `Cancel all queued jobs for thread ${row.threadDbId}?`;
+  const cancelAll = async () => {
+    const confirmMessage = "Cancel every queued OpenAI job?";
 
     if (!window.confirm(confirmMessage)) return;
 
     try {
-      const setLoading = expireThread ? setExpiringThreads : setCancellingThreads;
-      setLoading((prev) => ({ ...prev, [threadKey]: true }));
+      setIsCancelAllLoading(true);
       setError("");
       setSuccessMessage("");
-      await cancelQueue({ threadDbId: row.threadDbId, expireThread });
+      await cancelQueue({ all: true });
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
-      const setLoading = expireThread ? setExpiringThreads : setCancellingThreads;
-      setLoading((prev) => {
-        const next = { ...prev };
-        delete next[threadKey];
-        return next;
-      });
-    }
-  };
-
-  const cancelAll = async (expireThread = false) => {
-    const confirmMessage = expireThread
-      ? "Cancel every queued OpenAI job and expire affected threads?"
-      : "Cancel every queued OpenAI job?";
-
-    if (!window.confirm(confirmMessage)) return;
-
-    try {
-      const setLoading = expireThread ? setIsCancelAllExpireLoading : setIsCancelAllLoading;
-      setLoading(true);
-      setError("");
-      setSuccessMessage("");
-      await cancelQueue({ all: true, expireThread });
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      const setLoading = expireThread ? setIsCancelAllExpireLoading : setIsCancelAllLoading;
-      setLoading(false);
+      setIsCancelAllLoading(false);
     }
   };
 
@@ -309,8 +277,23 @@ export default function OpenAIQueuePanel(props: OpenAIQueuePanelProps) {
     setThreadFilter("");
   };
 
+  const renderParticipantId = (participantId?: string | null) => {
+    const formatted = formatNullable(participantId);
+    if (!participantId || !onParticipantClick) return formatted;
+
+    return (
+      <ParticipantButton
+        type="button"
+        onClick={() => onParticipantClick(participantId)}
+        title={`Open messages for ${participantId}`}
+      >
+        {participantId}
+      </ParticipantButton>
+    );
+  };
+
   const hasRows = queued.length > 0;
-  const isBulkActionLoading = isRunAllLoading || isCancelAllLoading || isCancelAllExpireLoading;
+  const isBulkActionLoading = isRunAllLoading || isCancelAllLoading;
 
   return (
     <Page $embedded={embedded}>
@@ -334,18 +317,10 @@ export default function OpenAIQueuePanel(props: OpenAIQueuePanelProps) {
           </Button>
           <Button
             type="button"
-            onClick={() => cancelAll()}
+            onClick={cancelAll}
             disabled={isBulkActionLoading || !hasRows}
           >
             {isCancelAllLoading ? "Cancelling..." : "Cancel All"}
-          </Button>
-          <Button
-            type="button"
-            $variant="danger"
-            onClick={() => cancelAll(true)}
-            disabled={isBulkActionLoading || !hasRows}
-          >
-            {isCancelAllExpireLoading ? "Expiring..." : "Cancel All + Expire"}
           </Button>
           {onClose && (
             <Button type="button" onClick={onClose}>
@@ -406,17 +381,14 @@ export default function OpenAIQueuePanel(props: OpenAIQueuePanelProps) {
               <tbody>
                 {queued.map((row) => {
                   const key = rowKey(row);
-                  const threadKey = String(row.threadDbId);
                   const isRowRunning = !!runningRows[key];
                   const isRowCancelling = !!cancellingRows[key];
-                  const isThreadCancelling = !!cancellingThreads[threadKey];
-                  const isThreadExpiring = !!expiringThreads[threadKey];
 
                   return (
                     <tr key={key}>
                       <Td>{row.threadDbId}</Td>
                       <Td>{formatNullable(row.id)}</Td>
-                      <Td>{formatNullable(row.participantId)}</Td>
+                      <Td>{renderParticipantId(row.participantId)}</Td>
                       <Td>{formatNullable(row.displayPhoneId)}</Td>
                       <Td>
                         <Badge>{formatNullable(row.state)}</Badge>
@@ -450,21 +422,6 @@ export default function OpenAIQueuePanel(props: OpenAIQueuePanelProps) {
                             disabled={isRowCancelling || isRowRunning}
                           >
                             {isRowCancelling ? "Cancelling..." : "Cancel"}
-                          </Button>
-                          <Button
-                            type="button"
-                            onClick={() => cancelThread(row)}
-                            disabled={isThreadCancelling || isThreadExpiring}
-                          >
-                            {isThreadCancelling ? "Cancelling..." : "Cancel Thread"}
-                          </Button>
-                          <Button
-                            type="button"
-                            $variant="danger"
-                            onClick={() => cancelThread(row, true)}
-                            disabled={isThreadCancelling || isThreadExpiring}
-                          >
-                            {isThreadExpiring ? "Expiring..." : "Cancel + Expire"}
                           </Button>
                         </ActionGroup>
                       </Td>

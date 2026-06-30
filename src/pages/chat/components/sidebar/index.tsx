@@ -243,6 +243,31 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
     });
   }, [chatCtx.inbox, pinOverlay]);
 
+  const openQueueParticipant = useCallback(
+    (participantId: string) => {
+      const id = participantId.trim();
+      if (!id) return;
+
+      const chat =
+        mergedInbox.find((item) => item.participantId === id) ??
+        ({
+          id,
+          participantId: id,
+          name: id,
+          image: "/assets/images/boy4.jpeg",
+          updatedAt: "",
+        } as Inbox);
+
+      setShowQueueModal(false);
+      chatCtx.onChangeChat(chat);
+      chatCtx.onFirstOpenChat(true);
+
+      const q = selectedWaId ? `?waId=${encodeURIComponent(selectedWaId)}` : "";
+      navigate("/" + id + q);
+    },
+    [chatCtx, mergedInbox, navigate, selectedWaId]
+  );
+
   // Sort (pinned first, then pinnedAt desc, then timestamp desc)
   const sortedInbox: Inbox[] = useMemo(() => {
     const arr = [...mergedInbox];
@@ -423,7 +448,13 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
         aria-labelledby="openai-queue-title"
       >
         <QueueModalShell>
-          {showQueueModal && <OpenAIQueuePanel embedded onClose={() => setShowQueueModal(false)} />}
+          {showQueueModal && (
+            <OpenAIQueuePanel
+              embedded
+              onClose={() => setShowQueueModal(false)}
+              onParticipantClick={openQueueParticipant}
+            />
+          )}
         </QueueModalShell>
       </Modal>
 
