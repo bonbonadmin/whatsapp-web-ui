@@ -314,12 +314,13 @@ export default function Footer() {
 
   const sendWebhook = () => {
     if (!chatCtx.activeChat) return;
-    fetch(`${baseUrl}/message/manual-webhook-v2`, {
+    fetch(`${baseUrl}/message/add-thread-message-v3`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...waHeaders },
       body: JSON.stringify({
         phoneNumber: chatCtx.activeChat.participantId,
         textMessage: webhookMessage,
+        messageRole: "user",
       }),
     })
       .then(() => {
@@ -343,7 +344,7 @@ export default function Footer() {
       messageRole = aiRole;
     }
 
-    fetch(`${baseUrl}/message/add-thread-message-v2`, {
+    fetch(`${baseUrl}/message/add-thread-message-v3`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...waHeaders },
       body: JSON.stringify({
