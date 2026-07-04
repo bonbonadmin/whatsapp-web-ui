@@ -11,6 +11,11 @@ import {
   HeaderActions,
   Input,
   Message,
+  ModalActions,
+  ModalCard,
+  ModalOverlay,
+  ModalText,
+  ModalTitle,
   Muted,
   Page,
   ParticipantButton,
@@ -111,6 +116,7 @@ export default function OpenAIQueuePanel(props: OpenAIQueuePanelProps) {
   const [cancellingRows, setCancellingRows] = useState<Record<string, boolean>>({});
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [pendingBulkAction, setPendingBulkAction] = useState<"run" | "cancel" | null>(null);
 
   const listUrl = useMemo(() => {
     const params = new URLSearchParams();
@@ -251,10 +257,6 @@ export default function OpenAIQueuePanel(props: OpenAIQueuePanelProps) {
   };
 
   const cancelAll = async () => {
-    const confirmMessage = "Cancel every queued OpenAI job?";
-
-    if (!window.confirm(confirmMessage)) return;
-
     try {
       setIsCancelAllLoading(true);
       setError("");
@@ -264,6 +266,17 @@ export default function OpenAIQueuePanel(props: OpenAIQueuePanelProps) {
       setError(getErrorMessage(err));
     } finally {
       setIsCancelAllLoading(false);
+    }
+  };
+
+  const confirmBulkAction = () => {
+    const action = pendingBulkAction;
+    setPendingBulkAction(null);
+
+    if (action === "run") {
+      runAll();
+    } else if (action === "cancel") {
+      cancelAll();
     }
   };
 
@@ -310,14 +323,14 @@ export default function OpenAIQueuePanel(props: OpenAIQueuePanelProps) {
           <Button
             type="button"
             $variant="primary"
-            onClick={runAll}
+            onClick={() => setPendingBulkAction("run")}
             disabled={isBulkActionLoading || !hasRows}
           >
             {isRunAllLoading ? "Running..." : "Run All"}
           </Button>
           <Button
             type="button"
-            onClick={cancelAll}
+            onClick={() => setPendingBulkAction("cancel")}
             disabled={isBulkActionLoading || !hasRows}
           >
             {isCancelAllLoading ? "Cancelling..." : "Cancel All"}
@@ -433,6 +446,41 @@ export default function OpenAIQueuePanel(props: OpenAIQueuePanelProps) {
           </TableShell>
         )}
       </Body>
+
+      {pendingBulkAction && (
+        <ModalOverlay
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setPendingBulkAction(null)}
+        >
+          <ModalCard onClick={(event) => event.stopPropagation()}>
+            <ModalTitle>
+              {pendingBulkAction === "run" ? "Run all queued jobs?" : "Cancel all queued jobs?"}
+            </ModalTitle>
+            <ModalText>
+              {pendingBulkAction === "run"
+                ? `This will resume all ${count} queued OpenAI process${
+                    count === 1 ? "" : "es"
+                  }${threadFilter ? ` for thread ${threadFilter}` : ""}. This action cannot be undone.`
+                : `This will cancel all ${count} queued OpenAI process${
+                    count === 1 ? "" : "es"
+                  }${threadFilter ? ` for thread ${threadFilter}` : ""}. This action cannot be undone.`}
+            </ModalText>
+            <ModalActions>
+              <Button type="button" onClick={() => setPendingBulkAction(null)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                $variant={pendingBulkAction === "run" ? "primary" : "danger"}
+                onClick={confirmBulkAction}
+              >
+                {pendingBulkAction === "run" ? "Run All" : "Cancel All"}
+              </Button>
+            </ModalActions>
+          </ModalCard>
+        </ModalOverlay>
+      )}
     </Page>
   );
 }

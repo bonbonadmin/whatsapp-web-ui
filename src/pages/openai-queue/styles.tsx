@@ -300,3 +300,45 @@ export const CenterState = styled.div`
   border: 1px solid ${(props) => props.theme.common.borderColor};
   background: ${(props) => props.theme.common.secondaryColor};
 `;
+
+export const ModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.55);
+`;
+
+export const ModalCard = styled.div`
+  width: 100%;
+  max-width: 420px;
+  background: ${(props) => props.theme.common.primaryColor};
+  border: 1px solid ${(props) => props.theme.common.borderColor};
+  border-radius: 12px;
+  padding: 22px 24px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
+`;
+
+export const ModalTitle = styled.h2`
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: ${(props) => props.theme.common.mainHeadingColor};
+`;
+
+export const ModalText = styled.p`
+  margin-top: 10px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: ${(props) => props.theme.common.subHeadingColor};
+`;
+
+export const ModalActions = styled.div`
+  margin-top: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+`;
