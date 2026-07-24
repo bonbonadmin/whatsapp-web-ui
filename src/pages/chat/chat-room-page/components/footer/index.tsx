@@ -23,27 +23,14 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Modal from "@mui/material/Modal";
 import Checkbox from "@mui/material/Checkbox";
-import Grid from "@mui/material/Grid"; // make sure to import
 import FormControl from "@mui/material/FormControl";
 import FormLabel from "@mui/material/FormLabel";
 import RadioGroup from "@mui/material/RadioGroup";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Radio from "@mui/material/Radio";
 import TextField from "@mui/material/TextField";
+import TemplateForm, { WhatsappTemplate } from "./template-form";
 
-interface WhatsappComponent {
-  text?: string;
-  type: string;
-  format?: string;
-  buttons?: any[]; 
-  example?: Record<string, any>;
-}
-interface WhatsappTemplate {
-  id: number;
-  template_name: string;
-  all_component: WhatsappComponent[];
-  lang_code: string;
-}
 interface PresetMessage {
   id: number;
   message: string;
@@ -89,15 +76,9 @@ export default function Footer() {
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [templates, setTemplates] = useState<WhatsappTemplate[]>([]);
   const [templateSearch, setTemplateSearch] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
-  const [varInputs, setVarInputs] = useState<Record<string, string>>({});
-  const [buttonInputs, setButtonInputs] = useState<{
-    thumbnail_product_retailer_id: string;
-    title: string;
-    product_items: string;
-  }>({ thumbnail_product_retailer_id: "", title: "", product_items: "" });
-  const [headerImageUrl, setHeaderImageUrl] = useState("");
-  const [urlInputs, setUrlInputs] = useState<Record<string, string>>({});
+  const [selectedTemplate, setSelectedTemplate] = useState<WhatsappTemplate | null>(null);
+  const [sendingTemplate, setSendingTemplate] = useState(false);
+  const [templateError, setTemplateError] = useState("");
   const [showWebhookModal, setShowWebhookModal] = useState(false);
   const [webhookMessage, setWebhookMessage] = useState("");
   const [showAIModal, setShowAIModal] = useState(false);
@@ -112,9 +93,15 @@ export default function Footer() {
 
   const chatCtx = useChatContext();
   const baseUrl = process.env.REACT_APP_API_URL;
-  const filteredTemplates = templates.filter((template) =>
-    template.template_name.toLowerCase().includes(templateSearch.trim().toLowerCase())
-  );
+  const templateQuery = templateSearch.trim().toLowerCase();
+  const filteredTemplates = templates.filter((template) => {
+    if (!templateQuery) return true;
+    const body = template.all_component?.find((c) => c.type === "BODY")?.text || "";
+    return (
+      template.template_name.toLowerCase().includes(templateQuery) ||
+      body.toLowerCase().includes(templateQuery)
+    );
+  });
 
   // fetch templates when modal opens
   useEffect(() => {
@@ -157,136 +144,40 @@ export default function Footer() {
     }
   };
 
-  const handleSelectTemplate = (template: WhatsappTemplate) => {
-    // Store the selected template immediately
-    setSelectedTemplate(template);
-
-    // Always treat all_component as an array
-    const comps: WhatsappComponent[] = template.all_component ?? [];
-
-    // For each BODY component, pull out all {{n}} matches
-    const indices = comps
-      .filter(c => c.type === 'BODY')
-      .flatMap(c => {
-        // Force the iterator to a typed array
-        const matches = Array.from(
-          (c.text ?? "").matchAll(/\{\{(\d+)\}\}/g) as IterableIterator<RegExpMatchArray>
-        );
-        // Map each RegExpMatchArray to its first capture group
-        return matches.map(match => match[1]);
-      });
-
-    // Dedupe
-    const unique = Array.from(new Set(indices));
-
-    // Initialize an empty string for each variable index
-    const initInputs: Record<string, string> = {};
-    unique.forEach(idx => { initInputs[idx] = ""; });
-
-    setVarInputs(initInputs);
-
-    const imageHeader = comps.find(c => c.type === "HEADER" && c.format === "IMAGE");
-    const headerHandle = imageHeader?.example?.header_handle;
-    setHeaderImageUrl(Array.isArray(headerHandle) ? headerHandle[0] ?? "" : "");
-
-    //MPM vars init
-    const btnGroup = comps.find(c => c.type === 'BUTTONS' && c.buttons?.some(b => b.type.toLowerCase() === 'mpm')); //NEW
-    if (btnGroup) {
-      setButtonInputs({ thumbnail_product_retailer_id: '', title: '', product_items: '' }); //NEW
-    }
-
-    // URL vars init       
-    const urlGroup = comps.find(c => c.type==="BUTTONS")
-      ?.buttons?.find(b => b.type.toLowerCase()==="url");
-    if (urlGroup?.url) {
-      const vars = Array.from(
-        (urlGroup.url.matchAll(/\{\{(\d+)\}\}/g) as IterableIterator<RegExpMatchArray>),
-        m => m[1]
-      );
-      setUrlInputs(Object.fromEntries(Array.from(new Set(vars)).map(i=>[i,""])));
-    } else {
-      setUrlInputs({});  
-    }
+  const closeTemplateModal = () => {
+    setShowTemplateModal(false);
+    setSelectedTemplate(null);
+    setTemplateSearch("");
+    setTemplateError("");
+    setSendingTemplate(false);
   };
 
-  const handleSendTemplate = () => {
-    if (!selectedTemplate) return;
+  const handleSendTemplate = (components: any[]) => {
+    if (!selectedTemplate || sendingTemplate) return;
 
-    // Always treat all_component as an array
-    const comps: WhatsappComponent[] = selectedTemplate.all_component ?? [];
+    setSendingTemplate(true);
+    setTemplateError("");
 
-    // 1) BODY
-    const params = Object.entries(varInputs).map(([k,v]) => ({
-      type:"text" as const, text:v
-    }));
-    const payload: any[] = [];
-    const hasImageHeader = comps.some(c => c.type === "HEADER" && c.format === "IMAGE");
-    if (hasImageHeader && headerImageUrl.trim()) {
-      payload.push({
-        type: "header" as const,
-        parameters: [{
-          type: "image" as const,
-          image: { link: headerImageUrl.trim() }
-        }]
-      });
-    }
-    if (params.length) payload.push({ type:"body" as const, parameters:params });
-
-    // 2) BUTTONS → MPM, catalog, flow, url
-    const btns = comps.find(c => c.type === "BUTTONS")?.buttons || [];
-    btns.forEach((b: any, i: number) => {
-      const subtype = b.type.toLowerCase();
-      // MPM(1) & URL(4) need parameters
-      if (subtype === "mpm") {
-        const items = buttonInputs.product_items
-          .split(",").map(c => ({ product_retailer_id: c.trim() }));
-        payload.push({
-          type: "button" as const,
-          sub_type: "mpm", index: i,
-          parameters: [{
-            type: "action" as const,
-            action: {
-              thumbnail_product_retailer_id: buttonInputs.thumbnail_product_retailer_id,
-              sections: [{ title: buttonInputs.title, product_items: items }]
-            }
-          }]
-        });
-      } else if (subtype === "url") {
-        // if urlInputs empty → no params
-        const urlParams = Object.entries(urlInputs).map(([k, v]) => ({
-          type: "text" as const, text: v
-        }));  //NEW
-        payload.push({
-          type: "button" as const,
-          sub_type: "url", index: i,
-          ...(urlParams.length ? { parameters: urlParams } : {}),
-        });
-      } else if (subtype === "catalog" || subtype === "flow") {
-        payload.push({ type: "button" as const, sub_type: subtype === "catalog" ? "CATALOG" : subtype, index: i });
-      }
-    });
-
-    // send
     fetch(`${baseUrl}/templateMessage/send`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         to: chatCtx.activeChat?.participantId,
         type: "template" as const,
         templateName: selectedTemplate.template_name,
         languageCode: selectedTemplate.lang_code,
-        components: payload
-      })
+        components,
+      }),
     })
-      .then(() => {
-        setShowTemplateModal(false);
-        setSelectedTemplate(null);
-        setTemplateSearch("");
-        setVarInputs({});
-        setHeaderImageUrl("");
-        setButtonInputs({ thumbnail_product_retailer_id:"", title:"", product_items:"" });
-        setUrlInputs({});  
+      .then((res) => {
+        if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
+        closeTemplateModal();
       })
-      .catch(console.error);
+      .catch((error) => {
+        console.error(error);
+        setTemplateError("Couldn't send the template. Please try again.");
+      })
+      .finally(() => setSendingTemplate(false));
   };
 
   const sendWebhook = () => {
@@ -561,26 +452,21 @@ export default function Footer() {
       </Modal>
 
       {/* Templates Modal */}
-      <Modal
-        open={showTemplateModal}
-        onClose={()=>{
-          setShowTemplateModal(false);
-          setSelectedTemplate(null);
-          setTemplateSearch("");
-          setVarInputs({});
-          setHeaderImageUrl("");
-          setButtonInputs({ thumbnail_product_retailer_id:"", title:"", product_items:"" }); //NEW
-          setUrlInputs({});                                                               //NEW
-        }}
-      >
+      <Modal open={showTemplateModal} onClose={closeTemplateModal}>
         <Box
           sx={{
             ...modalStyle,
             color: "#fff",
             display: "flex",
             flexDirection: "column",
-            maxHeight: "calc(100vh - 24px)",
-            width: "min(700px, calc(100vw - 24px))",
+            height: "auto",
+            maxHeight: selectedTemplate
+              ? { xs: "calc(100vh - 24px)", md: "min(760px, calc(100vh - 24px))" }
+              : "calc(100vh - 24px)",
+            overflow: "hidden",
+            width: selectedTemplate
+              ? "min(1040px, calc(100vw - 24px))"
+              : "min(700px, calc(100vw - 24px))",
           }}
         >
           {!selectedTemplate ? (
@@ -599,7 +485,7 @@ export default function Footer() {
                 <TextField
                   value={templateSearch}
                   onChange={(event) => setTemplateSearch(event.target.value)}
-                  placeholder="Search template name"
+                  placeholder="Search name or message text"
                   size="small"
                   variant="outlined"
                   sx={{
@@ -618,174 +504,100 @@ export default function Footer() {
                   }}
                 />
               </Box>
-              <Box sx={{ flex:1, overflowY:"auto" }}>
-                <Grid container spacing={2} sx={{ fontWeight:"bold", mb:1 }}>
-                  <Grid item xs={4} sx={{ color:"#fff" }}>Name</Grid>
-                  <Grid item xs={8} sx={{ color:"#fff" }}>Text</Grid>
-                </Grid>
-                {filteredTemplates.map(t=>{
-                  const txt = t.all_component?.find(c=>c.type==="BODY")?.text||"";
+              <Box sx={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 1 }}>
+                {filteredTemplates.map((t) => {
+                  const body = t.all_component?.find((c) => c.type === "BODY")?.text || "";
+                  const header = t.all_component?.find((c) => c.type === "HEADER");
+                  const headerFormat = (header?.format || (header?.text ? "TEXT" : "")).toUpperCase();
+                  const tags = [t.lang_code, headerFormat].filter(Boolean);
                   return (
-                    <Grid
-                      container spacing={2} key={t.id}
-                      onClick={()=>handleSelectTemplate(t)}
-                      sx={{ cursor:"pointer", py:1, "&:hover":{ backgroundColor:"action.hover" } }}
+                    <Box
+                      key={t.id}
+                      component="button"
+                      type="button"
+                      onClick={() => {
+                        setTemplateError("");
+                        setSelectedTemplate(t);
+                      }}
+                      sx={{
+                        background: "rgba(255,255,255,0.04)",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        borderRadius: "10px",
+                        color: "#fff",
+                        cursor: "pointer",
+                        display: "block",
+                        p: 1.5,
+                        textAlign: "left",
+                        width: "100%",
+                        "&:hover": {
+                          background: "rgba(255,255,255,0.09)",
+                          borderColor: "rgba(0,168,132,0.6)",
+                        },
+                      }}
                     >
-                      <Grid item xs={4} sx={{ color:"#fff" }}>{t.template_name}</Grid>
-                      <Grid item xs={8} sx={{ whiteSpace:"pre-wrap", typography:"body2", color:"#fff" }}>{txt}</Grid>
-                    </Grid>
+                      <Box sx={{ alignItems: "center", display: "flex", flexWrap: "wrap", gap: 1 }}>
+                        <Typography sx={{ fontWeight: 600, overflowWrap: "anywhere" }}>
+                          {t.template_name}
+                        </Typography>
+                        {tags.map((tag) => (
+                          <Box
+                            key={tag}
+                            sx={{
+                              backgroundColor: "rgba(255,255,255,0.1)",
+                              borderRadius: "4px",
+                              color: "rgba(255,255,255,0.7)",
+                              fontSize: "0.65rem",
+                              letterSpacing: "0.04em",
+                              px: 0.75,
+                              py: "2px",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {tag}
+                          </Box>
+                        ))}
+                      </Box>
+                      <Typography
+                        sx={{
+                          color: "rgba(255,255,255,0.65)",
+                          display: "-webkit-box",
+                          fontSize: "0.8rem",
+                          mt: 0.5,
+                          overflow: "hidden",
+                          whiteSpace: "pre-wrap",
+                          WebkitBoxOrient: "vertical",
+                          WebkitLineClamp: 2,
+                        }}
+                      >
+                        {body}
+                      </Typography>
+                    </Box>
                   );
                 })}
-                {templates.length===0 && <Box sx={{ textAlign:"center", py:2, color:"#fff" }}>No templates available.</Box>}
-                {templates.length>0 && filteredTemplates.length===0 && <Box sx={{ textAlign:"center", py:2, color:"#fff" }}>No templates match your search.</Box>}
+                {templates.length === 0 && (
+                  <Box sx={{ textAlign: "center", py: 2, color: "rgba(255,255,255,0.7)" }}>
+                    No templates available.
+                  </Box>
+                )}
+                {templates.length > 0 && filteredTemplates.length === 0 && (
+                  <Box sx={{ textAlign: "center", py: 2, color: "rgba(255,255,255,0.7)" }}>
+                    No templates match your search.
+                  </Box>
+                )}
               </Box>
             </>
           ) : (
-            <Box sx={{ display:"flex", flexDirection:"column", flex:1 }}>
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  mb: 2,
-                }}
-              >
-                <Box
-                  component="button"
-                  type="button"
-                  aria-label="Back to templates"
-                  onClick={() => {
-                    setSelectedTemplate(null);
-                    setVarInputs({});
-                    setHeaderImageUrl("");
-                    setButtonInputs({ thumbnail_product_retailer_id:"", title:"", product_items:"" });
-                    setUrlInputs({});
-                  }}
-                  sx={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 36,
-                    height: 36,
-                    p: 0,
-                    border: 0,
-                    borderRadius: "50%",
-                    color: "#fff",
-                    background: "transparent",
-                    cursor: "pointer",
-                    "&:hover": { backgroundColor: "action.hover" },
-                    "& .icon": {
-                      width: 24,
-                      height: 24,
-                    },
-                  }}
-                >
-                  <Icon id="back" className="icon" />
-                </Box>
-                <Typography variant="h6">Fill Template Variables</Typography>
-              </Box>
-              <Typography variant="body2" sx={{ whiteSpace:"pre-wrap", mb:2, opacity:0.8 }}>
-                { (selectedTemplate.all_component?.find(c=>c.type==="BODY")?.text)||"" }
-              </Typography>
-
-              <Box sx={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:2 }}>
-                {/* HEADER image input */}
-                {selectedTemplate.all_component?.some(c=>c.type==="HEADER" && c.format==="IMAGE") && (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      flexDirection: { xs: "column", sm: "row" },
-                      alignItems: { xs: "stretch", sm: "center" },
-                      gap: 2,
-                    }}
-                  >
-                    <Typography sx={{ width: { xs: "auto", sm: 120 }, color:"#fff" }}>Image URL</Typography>
-                    <Input
-                      placeholder="Enter image URL"
-                      value={headerImageUrl}
-                      onChange={e=>setHeaderImageUrl(e.target.value)}
-                      style={{ background:"transparent", color:"#fff" }}
-                    />
-                  </Box>
-                )}
-
-                {/* BODY inputs */}
-                {Object.entries(varInputs).map(([i,v])=>(
-                  <Box
-                    key={i}
-                    sx={{
-                      display: "flex",
-                      flexDirection: { xs: "column", sm: "row" },
-                      alignItems: { xs: "stretch", sm: "center" },
-                      gap: 2,
-                    }}
-                  >
-                    <Typography sx={{ width: { xs: "auto", sm: 120 }, color:"#fff" }}>{'{{'+i+'}}'}</Typography>
-                    <Input
-                      placeholder="Enter value"
-                      value={v}
-                      onChange={e=>setVarInputs(old=>({...old,[i]:e.target.value}))}
-                      style={{ background:"transparent", color:"#fff" }}
-                    />
-                  </Box>
-                ))}
-
-                {/* MPM inputs */}
-                {selectedTemplate.all_component?.find(c=>c.type==="BUTTONS")?.buttons?.some(b=>b.type.toLowerCase()==="mpm") && (
-                  <>
-                    <Typography sx={{ color:"#fff", mt:2 }}>MPM Button Action Parameters</Typography>
-                    <Input
-                      placeholder="Thumbnail Product Retailer ID"
-                      value={buttonInputs.thumbnail_product_retailer_id}
-                      onChange={e=>setButtonInputs(b=>({...b,thumbnail_product_retailer_id:e.target.value}))}
-                      style={{ background:"transparent", color:"#fff" }}
-                    />
-                    <Input
-                      placeholder="Section Title"
-                      value={buttonInputs.title}
-                      onChange={e=>setButtonInputs(b=>({...b,title:e.target.value}))}
-                      style={{ background:"transparent", color:"#fff" }}
-                    />
-                    <Input
-                      placeholder="Product Items (comma-separated)"
-                      value={buttonInputs.product_items}
-                      onChange={e=>setButtonInputs(b=>({...b,product_items:e.target.value}))}
-                      style={{ background:"transparent", color:"#fff" }}
-                    />
-                  </>
-                )}
-
-                {/* URL inputs */}
-                {selectedTemplate.all_component?.find(c=>c.type==="BUTTONS")?.buttons?.some(b=>b.type.toLowerCase()==="url") && (
-                  <>
-                    <Typography sx={{ color:"#fff", mt:2 }}>URL Button Parameters</Typography>
-                    {Object.entries(urlInputs).map(([i,v])=>(
-                      <Box
-                        key={i}
-                        sx={{
-                          display: "flex",
-                          flexDirection: { xs: "column", sm: "row" },
-                          alignItems: { xs: "stretch", sm: "center" },
-                          gap: 2,
-                        }}
-                      >
-                        <Typography sx={{ width: { xs: "auto", sm: 120 }, color:"#fff" }}>{'{{'+i+'}}'}</Typography>
-                        <Input
-                          placeholder="Enter value"
-                          value={v}
-                          onChange={e=>setUrlInputs(old=>({...old,[i]:e.target.value}))}
-                          style={{ background:"transparent", color:"#fff" }}
-                        />
-                      </Box>
-                    ))}
-                  </>
-                )}
-              </Box>
-
-              <Box sx={{ mt:3, display:"flex", justifyContent:"flex-end" }}>
-                <SendMessageButton onClick={handleSendTemplate}><Icon id="send"/></SendMessageButton>
-              </Box>
-            </Box>
+            <TemplateForm
+              key={selectedTemplate.id}
+              template={selectedTemplate}
+              sending={sendingTemplate}
+              errorMessage={templateError}
+              onBack={() => {
+                setSelectedTemplate(null);
+                setTemplateError("");
+              }}
+              onSend={handleSendTemplate}
+            />
           )}
         </Box>
       </Modal>
