@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 
 import { inbox as demoInbox } from "../data/inbox";
-import { Inbox, InboxResponse } from "common/types/common.type";
+import { Booking, Inbox, InboxResponse } from "common/types/common.type";
 import {
   getMessages,
   Message,
@@ -36,6 +36,7 @@ type ChatContextProp = {
   loadMore: () => void;
   isFetchInbox: boolean;
   bookingEvents?: BookingEvent[];
+  bookings?: Booking[];
   reloadMessages: (days?: number) => void;
 };
 
@@ -49,6 +50,7 @@ const initialValue: ChatContextProp = {
   hasMore: true,
   isFetchInbox: false,
   bookingEvents: undefined,
+  bookings: undefined,
   onChangeChat() { throw new Error(); },
   onSendMessage() { throw new Error(); },
   onUploadFile() { throw new Error(); },
@@ -82,6 +84,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
   const [searchResults] = useState<SearchResult[]>([]);
   const [isFetchInbox, setIsFetchInbox] = useState<boolean>(false);
   const [bookingEvents, setBookingEvents] = useState<BookingEvent[] | undefined>(undefined);
+  const [bookings, setBookings] = useState<Booking[] | undefined>(undefined);
 
   const baseURL = process.env.REACT_APP_API_URL;
 
@@ -90,6 +93,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
   const toggleSearchRef = useRef(toggleSearch);
   const isFetchInboxRef = useRef(isFetchInbox);
   const didRestoreActiveRef = useRef(false);
+  const messageRequestRef = useRef(0);
 
   useEffect(() => { activeChatRef.current = activeChat; }, [activeChat]);
   useEffect(() => { lastUpdateRef.current = lastUpdate; }, [lastUpdate]);
@@ -107,6 +111,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
   const fetchMessages = useCallback(
     async (id: string, days: number = 90) => {
       if (!id) return;
+      const requestId = ++messageRequestRef.current;
       try {
         const waId = localStorage.getItem("wa:selectedId") || "";
         const headers: Record<string, string> = {};
@@ -117,14 +122,29 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
           { params: { days }, headers }
         );
 
-        // ===== booking events (unchanged) =====
-        const rawEvents = Array.isArray(data?.bookingEvents) ? data.bookingEvents : [];
-        const events: BookingEvent[] = rawEvents
+        const rawBookings = Array.isArray(data?.bookings)
+          ? data.bookings
+          : Array.isArray(data?.bookingEvents)
+            ? data.bookingEvents
+            : [];
+        const nextBookings: Booking[] = rawBookings
           .map((e: any) => ({
+            booking_id: String(e?.booking_id ?? ""),
+            booking_event_id: String(e?.booking_event_id ?? ""),
             event_name: e?.event_name ?? e?.booking_event_name ?? "",
             started_at: e?.started_at ?? "",
+            designation: e?.designation ?? "",
+            name: e?.name ?? "",
+            pax: e?.pax == null ? null : Number(e.pax),
+            template_id: e?.template_id == null ? null : Number(e.template_id),
           }))
-          .filter((e) => e.event_name && e.started_at);
+          .filter((e: Booking) => e.booking_id);
+        const events: BookingEvent[] = nextBookings
+          .map(({ event_name, started_at }) => ({ event_name, started_at }))
+          .filter((event) => event.event_name && event.started_at);
+
+        if (requestId !== messageRequestRef.current) return;
+        setBookings(nextBookings.length ? nextBookings : undefined);
         setBookingEvents(events.length ? events : undefined);
 
         // ===== helpers for timestamps =====
@@ -185,8 +205,14 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
           String(a.createdAtISO).localeCompare(String(b.createdAtISO))
         );
 
-        setMessages(merged);
+        if (requestId === messageRequestRef.current) {
+          setMessages(merged);
+        }
       } catch (error) {
+        if (requestId === messageRequestRef.current) {
+          setBookings(undefined);
+          setBookingEvents(undefined);
+        }
         console.error("Error fetching messages list:", error);
       }
     },
@@ -264,6 +290,8 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
 
   const handleChangeChat = useCallback((chat: Inbox) => {
     setActiveChat(chat);
+    setBookings(undefined);
+    setBookingEvents(undefined);
     localStorage.setItem(LS_ACTIVE_CHAT, chat.participantId); // ✅ persist
     fetchMessages(chat.participantId);
   }, [fetchMessages]);
@@ -409,6 +437,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
         hasMore,
         isFetchInbox,
         bookingEvents,
+        bookings,
         onChangeChat: handleChangeChat,
         onSendMessage: handleSendMessage,
         onUploadFile: handleFileUpload,

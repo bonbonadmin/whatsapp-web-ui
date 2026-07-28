@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import Icon from "common/components/icons";
 import {
@@ -25,6 +25,10 @@ import FormLabel from "@mui/material/FormLabel";
 import RadioGroup from "@mui/material/RadioGroup";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Radio from "@mui/material/Radio";
+import InputLabel from "@mui/material/InputLabel";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
+import { Booking } from "common/types/common.type";
 
 interface WhatsappComponent {
   text: string;
@@ -38,6 +42,14 @@ interface WhatsappTemplate {
   template_name: string;
   all_component: WhatsappComponent[];
   lang_code: string;
+  variable_mappings?: WhatsappVariableMapping[];
+}
+interface WhatsappVariableMapping {
+  whatsapp_template_id?: number;
+  component: string;
+  position: number;
+  label?: string | null;
+  source_key?: string | null;
 }
 interface PresetMessage {
   id: number;
@@ -66,6 +78,65 @@ const modalStyle = {
   borderRadius: "20px",
 };
 
+const resolveBookingVariable = (sourceKey: string | null | undefined, booking?: Booking): string => {
+  if (!sourceKey || !booking) return "";
+
+  switch (sourceKey) {
+    case "booking.addressee":
+      return [booking.designation, booking.name].map((part) => part.trim()).filter(Boolean).join(" ");
+    case "booking.designation":
+      return booking.designation || "";
+    case "booking.name":
+      return booking.name || "";
+    case "booking.pax":
+      return booking.pax == null ? "" : String(booking.pax);
+    case "booking.event_name":
+      return booking.event_name || "";
+    default:
+      return "";
+  }
+};
+
+const buildBodyVariableInputs = (
+  template: WhatsappTemplate,
+  booking?: Booking
+): Record<string, string> => {
+  const components: WhatsappComponent[] = template.all_component ?? [];
+  const indices = components
+    .filter((component) => component.type.toUpperCase() === "BODY")
+    .flatMap((component) =>
+      Array.from(
+        component.text.matchAll(/\{\{(\d+)\}\}/g) as IterableIterator<RegExpMatchArray>
+      ).map((match) => match[1])
+    );
+
+  const inputs: Record<string, string> = {};
+  Array.from(new Set(indices))
+    .sort((a, b) => Number(a) - Number(b))
+    .forEach((position) => {
+      const mapping = template.variable_mappings?.find(
+        (item) =>
+          item.component.toLowerCase() === "body" &&
+          Number(item.position) === Number(position)
+      );
+      inputs[position] = resolveBookingVariable(mapping?.source_key, booking);
+    });
+
+  return inputs;
+};
+
+const selectDefaultBooking = (
+  template: WhatsappTemplate,
+  bookings: Booking[]
+): Booking | undefined => {
+  const matching = bookings.filter(
+    (booking) => Number(booking.template_id) === Number(template.id)
+  );
+  if (matching.length === 1) return matching[0];
+  if (bookings.length === 1) return bookings[0];
+  return undefined;
+};
+
 export default function Footer() {
   const [showIcons, setShowIcons] = useState(false);
   const [messageValue, setMessageValue] = useState("");
@@ -77,8 +148,10 @@ export default function Footer() {
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [templates, setTemplates] = useState<WhatsappTemplate[]>([]);
   const [headerMediaUrl, setHeaderMediaUrl] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<WhatsappTemplate | null>(null);
+  const [selectedBookingId, setSelectedBookingId] = useState("");
   const [varInputs, setVarInputs] = useState<Record<string, string>>({});
+  const [templateError, setTemplateError] = useState("");
   const [buttonInputs, setButtonInputs] = useState<{
     thumbnail_product_retailer_id: string;
     title: string;
@@ -137,6 +210,35 @@ export default function Footer() {
     }
   }, [showPresetModal, baseUrl, waHeaders]);
 
+  useEffect(() => {
+    if (!selectedTemplate || selectedBookingId) return;
+
+    const booking = selectDefaultBooking(selectedTemplate, chatCtx.bookings ?? []);
+    if (!booking) return;
+
+    const defaults = buildBodyVariableInputs(selectedTemplate, booking);
+    setSelectedBookingId(booking.booking_id);
+    setVarInputs((current) =>
+      Object.fromEntries(
+        Object.entries(defaults).map(([position, value]) => [
+          position,
+          current[position]?.trim() ? current[position] : value,
+        ])
+      )
+    );
+  }, [chatCtx.bookings, selectedBookingId, selectedTemplate]);
+
+  useEffect(() => {
+    setShowTemplateModal(false);
+    setSelectedTemplate(null);
+    setSelectedBookingId("");
+    setVarInputs({});
+    setTemplateError("");
+    setHeaderMediaUrl("");
+    setButtonInputs({ thumbnail_product_retailer_id: "", title: "", product_items: "" });
+    setUrlInputs({});
+  }, [chatCtx.activeChat?.participantId]);
+
   const submitMessage = () => {
     if (open && fileUpload) {
       chatCtx.onUploadFile(fileUpload, messageValue, uploadType, nonManual);
@@ -157,6 +259,7 @@ export default function Footer() {
 
   const handleSelectTemplate = (template: WhatsappTemplate) => {
     setSelectedTemplate(template);
+    setTemplateError("");
     const headerComp = template.all_component?.find((c) => c.type === "HEADER");
     const headerFmt = (headerComp?.format || "").toUpperCase(); // "IMAGE" | "VIDEO" | ...
 
@@ -173,20 +276,9 @@ export default function Footer() {
     }
     const comps: WhatsappComponent[] = template.all_component ?? [];
 
-    const indices = comps
-      .filter((c) => c.type === "BODY")
-      .flatMap((c) =>
-        Array.from(c.text.matchAll(/\{\{(\d+)\}\}/g) as IterableIterator<RegExpMatchArray>).map(
-          (m) => m[1]
-        )
-      );
-
-    const unique = Array.from(new Set(indices));
-    const initInputs: Record<string, string> = {};
-    unique.forEach((idx) => {
-      initInputs[idx] = "";
-    });
-    setVarInputs(initInputs);
+    const booking = selectDefaultBooking(template, chatCtx.bookings ?? []);
+    setSelectedBookingId(booking?.booking_id ?? "");
+    setVarInputs(buildBodyVariableInputs(template, booking));
 
     const btnGroup = comps.find(
       (c) => c.type === "BUTTONS" && c.buttons?.some((b) => b.type.toLowerCase() === "mpm")
@@ -213,7 +305,20 @@ export default function Footer() {
     const comps: WhatsappComponent[] = selectedTemplate.all_component ?? [];
 
     // BODY
-    const params = Object.entries(varInputs).map(([_, v]) => ({ type: "text" as const, text: v }));
+    const orderedVariables = Object.entries(varInputs).sort(
+      ([left], [right]) => Number(left) - Number(right)
+    );
+    const missingVariable = orderedVariables.find(([, value]) => !value.trim());
+    if (missingVariable) {
+      setTemplateError(`Please fill {{${missingVariable[0]}}} before sending.`);
+      return;
+    }
+    setTemplateError("");
+
+    const params = orderedVariables.map(([, value]) => ({
+      type: "text" as const,
+      text: value.trim(),
+    }));
     const payload: any[] = [];
     const headerComp = comps.find((c) => c.type === "HEADER");
     const headerFmt = (headerComp?.format || "").toUpperCase(); // "IMAGE" | "VIDEO" | "TEXT" | ...
@@ -276,12 +381,15 @@ export default function Footer() {
         templateName: selectedTemplate.template_name,
         languageCode: selectedTemplate.lang_code,
         components: payload,
+        bookingId: selectedBookingId || undefined,
       }),
     })
       .then(() => {
         setShowTemplateModal(false);
         setSelectedTemplate(null);
+        setSelectedBookingId("");
         setVarInputs({});
+        setTemplateError("");
         setButtonInputs({ thumbnail_product_retailer_id: "", title: "", product_items: "" });
         setUrlInputs({});
       })
@@ -557,7 +665,9 @@ export default function Footer() {
         onClose={() => {
           setShowTemplateModal(false);
           setSelectedTemplate(null);
+          setSelectedBookingId("");
           setVarInputs({});
+          setTemplateError("");
           setButtonInputs({ thumbnail_product_retailer_id: "", title: "", product_items: "" });
           setUrlInputs({});
           setHeaderMediaUrl(""); // reset media URL
@@ -618,6 +728,44 @@ export default function Footer() {
                 Fill Template Variables
               </Typography>
 
+              {(chatCtx.bookings?.length ?? 0) > 1 && (
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel id="template-booking-label" sx={{ color: "#ccc" }}>
+                    Booking
+                  </InputLabel>
+                  <Select
+                    labelId="template-booking-label"
+                    value={selectedBookingId}
+                    label="Booking"
+                    onChange={(event) => {
+                      const bookingId = String(event.target.value);
+                      const booking = chatCtx.bookings?.find(
+                        (item) => item.booking_id === bookingId
+                      );
+                      setSelectedBookingId(bookingId);
+                      setVarInputs(buildBodyVariableInputs(selectedTemplate, booking));
+                      setTemplateError("");
+                    }}
+                    sx={{ color: "#fff" }}
+                  >
+                    <MenuItem value="">
+                      <em>No booking prefill</em>
+                    </MenuItem>
+                    {chatCtx.bookings?.map((booking) => {
+                      const addressee = [booking.designation, booking.name]
+                        .map((part) => part.trim())
+                        .filter(Boolean)
+                        .join(" ");
+                      return (
+                        <MenuItem key={booking.booking_id} value={booking.booking_id}>
+                          {[booking.event_name, addressee].filter(Boolean).join(" — ")}
+                        </MenuItem>
+                      );
+                    })}
+                  </Select>
+                </FormControl>
+              )}
+
               {/* Body preview */}
               <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mb: 2, opacity: 0.8 }}>
                 {selectedTemplate.all_component?.find((c: any) => c.type === "BODY")?.text || ""}
@@ -660,17 +808,31 @@ export default function Footer() {
 
               {/* Variables for BODY {{n}} */}
               <Box sx={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 2, mt: 2 }}>
-                {Object.entries(varInputs).map(([i, v]) => (
-                  <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <Typography sx={{ width: 120, color: "#fff" }}>{`{{${i}}}`}</Typography>
-                    <Input
-                      placeholder="Enter value"
-                      value={v}
-                      onChange={(e) => setVarInputs((old) => ({ ...old, [i]: e.target.value }))}
-                      style={{ background: "transparent", color: "#fff" }}
-                    />
-                  </Box>
-                ))}
+                {Object.entries(varInputs)
+                  .sort(([left], [right]) => Number(left) - Number(right))
+                  .map(([i, v]) => {
+                    const label = selectedTemplate.variable_mappings?.find(
+                        (mapping) =>
+                          mapping.component.toLowerCase() === "body" &&
+                          Number(mapping.position) === Number(i)
+                      )?.label;
+                    return (
+                      <Box key={i} sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                        <Typography sx={{ width: 180, color: "#fff" }}>
+                          {label ? `${label} ({{${i}}})` : `{{${i}}}`}
+                        </Typography>
+                        <Input
+                          placeholder="Enter value"
+                          value={v}
+                          onChange={(e) => {
+                            setVarInputs((old) => ({ ...old, [i]: e.target.value }));
+                            setTemplateError("");
+                          }}
+                          style={{ background: "transparent", color: "#fff" }}
+                        />
+                      </Box>
+                    );
+                  })}
 
                 {/* MPM button params */}
                 {selectedTemplate.all_component
@@ -721,6 +883,10 @@ export default function Footer() {
                     </>
                   )}
               </Box>
+
+              {templateError && (
+                <Typography sx={{ mt: 2, color: "#ff8a80" }}>{templateError}</Typography>
+              )}
 
               <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>
                 <SendMessageButton onClick={handleSendTemplate}>
