@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 
 import { inbox as demoInbox } from "../data/inbox";
-import { Inbox, InboxResponse } from "common/types/common.type";
+import { Booking, Inbox, InboxResponse } from "common/types/common.type";
 import {
   getMessages,
   Message,
@@ -13,6 +13,15 @@ import {
 } from "../chat-room-page/components/messages-list/data/get-messages";
 
 type BookingEvent = { event_name: string; started_at: string };
+
+export type ManualState = {
+  participantId: string;
+  hasThread: boolean;
+  manual: boolean;
+  timeManual: string | null;
+  manualExpiresAt: string | null;
+  manualWindowHours: number;
+};
 
 type User = { name: string; image: string };
 
@@ -39,7 +48,11 @@ type ChatContextProp = {
   loadMore: () => void;
   isFetchInbox: boolean;
   bookingEvents?: BookingEvent[];
+  bookings?: Booking[];
   reloadMessages: (days?: number) => void;
+  manualState?: ManualState;
+  isTogglingManual: boolean;
+  onToggleManual: (next: boolean) => void;
 };
 
 const initialValue: ChatContextProp = {
@@ -53,6 +66,10 @@ const initialValue: ChatContextProp = {
   replyTarget: null,
   isFetchInbox: false,
   bookingEvents: undefined,
+  bookings: undefined,
+  manualState: undefined,
+  isTogglingManual: false,
+  onToggleManual() { throw new Error(); },
   onChangeChat() { throw new Error(); },
   onSendMessage() { throw new Error(); },
   onUploadFile() { throw new Error(); },
@@ -89,6 +106,9 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
   const [isFetchInbox, setIsFetchInbox] = useState<boolean>(false);
   const [bookingEvents, setBookingEvents] = useState<BookingEvent[] | undefined>(undefined);
   const [replyTarget, setReplyTarget] = useState<Message | null>(null);
+  const [bookings, setBookings] = useState<Booking[] | undefined>(undefined);
+  const [manualState, setManualState] = useState<ManualState | undefined>(undefined);
+  const [isTogglingManual, setIsTogglingManual] = useState<boolean>(false);
 
   const baseURL = process.env.REACT_APP_API_URL;
 
@@ -97,6 +117,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
   const toggleSearchRef = useRef(toggleSearch);
   const isFetchInboxRef = useRef(isFetchInbox);
   const didRestoreActiveRef = useRef(false);
+  const messageRequestRef = useRef(0);
 
   useEffect(() => { activeChatRef.current = activeChat; }, [activeChat]);
   useEffect(() => { lastUpdateRef.current = lastUpdate; }, [lastUpdate]);
@@ -114,6 +135,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
   const fetchMessages = useCallback(
     async (id: string, days: number = 365) => {
       if (!id) return;
+      const requestId = ++messageRequestRef.current;
       try {
         const waId = localStorage.getItem("wa:selectedId") || "";
         const headers: Record<string, string> = {};
@@ -124,14 +146,29 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
           { params: { days }, headers }
         );
 
-        // ===== booking events (unchanged) =====
-        const rawEvents = Array.isArray(data?.bookingEvents) ? data.bookingEvents : [];
-        const events: BookingEvent[] = rawEvents
+        const rawBookings = Array.isArray(data?.bookings)
+          ? data.bookings
+          : Array.isArray(data?.bookingEvents)
+            ? data.bookingEvents
+            : [];
+        const nextBookings: Booking[] = rawBookings
           .map((e: any) => ({
+            booking_id: String(e?.booking_id ?? ""),
+            booking_event_id: String(e?.booking_event_id ?? ""),
             event_name: e?.event_name ?? e?.booking_event_name ?? "",
             started_at: e?.started_at ?? "",
+            designation: e?.designation ?? "",
+            name: e?.name ?? "",
+            pax: e?.pax == null ? null : Number(e.pax),
+            template_id: e?.template_id == null ? null : Number(e.template_id),
           }))
-          .filter((e) => e.event_name && e.started_at);
+          .filter((e: Booking) => e.booking_id);
+        const events: BookingEvent[] = nextBookings
+          .map(({ event_name, started_at }) => ({ event_name, started_at }))
+          .filter((event) => event.event_name && event.started_at);
+
+        if (requestId !== messageRequestRef.current) return;
+        setBookings(nextBookings.length ? nextBookings : undefined);
         setBookingEvents(events.length ? events : undefined);
 
         // ===== helpers for timestamps =====
@@ -215,12 +252,91 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
           String(a.createdAtISO).localeCompare(String(b.createdAtISO))
         );
 
-        setMessages(merged);
+        if (requestId === messageRequestRef.current) {
+          setMessages(merged);
+        }
       } catch (error) {
+        if (requestId === messageRequestRef.current) {
+          setBookings(undefined);
+          setBookingEvents(undefined);
+        }
         console.error("Error fetching messages list:", error);
       }
     },
     [baseURL]
+  );
+
+  // ===== manual (human takeover) toggle =====
+  const manualRequestRef = useRef(0);
+
+  const toManualState = useCallback((participantId: string, payload: any): ManualState => ({
+    participantId,
+    hasThread: !!payload?.has_thread,
+    manual: Number(payload?.manual) === 1,
+    timeManual: payload?.time_manual ?? null,
+    manualExpiresAt: payload?.manual_expires_at ?? null,
+    manualWindowHours: Number(payload?.manual_window_hours) || 3,
+  }), []);
+
+  const fetchManual = useCallback(
+    async (participantId: string) => {
+      if (!participantId) return;
+      const requestId = ++manualRequestRef.current;
+      try {
+        const waId = localStorage.getItem("wa:selectedId") || "";
+        const headers: Record<string, string> = {};
+        if (waId) headers["x-wa-id"] = waId;
+
+        const { data } = await axios.get(
+          `${baseURL}/message-inbox/${encodeURIComponent(participantId)}/manual`,
+          { headers }
+        );
+
+        if (requestId !== manualRequestRef.current) return;
+        setManualState(toManualState(participantId, data?.data));
+      } catch (error) {
+        if (requestId === manualRequestRef.current) setManualState(undefined);
+        console.error("Error fetching manual state:", error);
+      }
+    },
+    [baseURL, toManualState]
+  );
+
+  const handleToggleManual = useCallback(
+    async (next: boolean) => {
+      const participantId = activeChatRef.current?.participantId;
+      if (!participantId) return;
+
+      const previous = manualState;
+      // Optimistic update; rolled back if the request fails.
+      setManualState((prev) =>
+        prev && prev.participantId === participantId
+          ? { ...prev, manual: next, timeManual: next ? new Date().toISOString() : null }
+          : prev
+      );
+      setIsTogglingManual(true);
+
+      try {
+        const waId = localStorage.getItem("wa:selectedId") || "";
+        const headers: Record<string, string> = {};
+        if (waId) headers["x-wa-id"] = waId;
+
+        const { data } = await axios.patch(
+          `${baseURL}/message-inbox/${encodeURIComponent(participantId)}/manual`,
+          { manual: next ? 1 : 0 },
+          { headers }
+        );
+
+        if (activeChatRef.current?.participantId !== participantId) return;
+        setManualState(toManualState(participantId, data?.data));
+      } catch (error) {
+        if (activeChatRef.current?.participantId === participantId) setManualState(previous);
+        console.error("Error updating manual state:", error);
+      } finally {
+        setIsTogglingManual(false);
+      }
+    },
+    [baseURL, manualState, toManualState]
   );
 
   const reloadMessages = useCallback((days: number = 365) => {
@@ -304,9 +420,13 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
   const handleChangeChat = useCallback((chat: Inbox) => {
     setActiveChat(chat);
     setReplyTarget(null);
+    setBookings(undefined);
+    setBookingEvents(undefined);
+    setManualState(undefined);
     localStorage.setItem(LS_ACTIVE_CHAT, chat.participantId); // ✅ persist
     fetchMessages(chat.participantId);
-  }, [fetchMessages]);
+    fetchManual(chat.participantId);
+  }, [fetchMessages, fetchManual]);
 
   const handleFirstOpenChat = useCallback((condition: boolean) => {
     setFirstOpenChat(condition);
@@ -325,11 +445,15 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
       };
       await axios.post(`${baseURL}/message/send`, payload);
       setReplyTarget(null);
-      if (msg.to) fetchMessages(msg.to);
+      if (msg.to) {
+        fetchMessages(msg.to);
+        // Sending flips the thread to manual server-side unless nonManual.
+        fetchManual(msg.to);
+      }
     } catch (error) {
       console.error("Error sending message:", error);
     }
-  }, [baseURL, fetchMessages]);
+  }, [baseURL, fetchMessages, fetchManual]);
 
   const handleSearch = useCallback(async (query: string) => {
     setSearchText(query);
@@ -397,10 +521,11 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
     if (found) {
       setActiveChat(found);
       fetchMessages(found.participantId);
+      fetchManual(found.participantId);
     }
 
     didRestoreActiveRef.current = true;
-  }, [inbox, fetchMessages]);
+  }, [inbox, fetchMessages, fetchManual]);
 
   const handleFileUpload = useCallback(
     async (file: File, msg: string, type: string, nonManual: boolean, contextMessageId?: string | null) => {
@@ -432,12 +557,13 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
         setReplyTarget(null);
         if (activeChatRef.current?.participantId) {
           fetchMessages(activeChatRef.current.participantId);
+          fetchManual(activeChatRef.current.participantId);
         }
       } catch (error) {
         console.error("Error upload image", error);
       }
     },
-    [baseURL, fetchMessages]
+    [baseURL, fetchMessages, fetchManual]
   );
 
   return (
@@ -454,6 +580,10 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
         replyTarget,
         isFetchInbox,
         bookingEvents,
+        bookings,
+        manualState,
+        isTogglingManual,
+        onToggleManual: handleToggleManual,
         onChangeChat: handleChangeChat,
         onSendMessage: handleSendMessage,
         onUploadFile: handleFileUpload,

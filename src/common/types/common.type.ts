@@ -5,6 +5,17 @@ export type EventSummary = {
   started_at: string; // ISO string
 };
 
+export type Booking = {
+  booking_id: string;
+  booking_event_id: string;
+  event_name: string;
+  started_at: string;
+  designation: string;
+  name: string;
+  pax: number | null;
+  template_id: number | null;
+};
+
 export type Inbox = {
   id: string;
   name: string;

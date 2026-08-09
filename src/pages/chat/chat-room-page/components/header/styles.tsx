@@ -139,6 +139,50 @@ export const actionStyles = css`
   cursor: pointer;
 `;
 
+export const ManualToggle = styled.button<{ $active: boolean }>`
+  ${actionStyles}
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-radius: 14px;
+  border: 1px solid
+    ${(props) => (props.$active ? "#00a884" : props.theme.common.subHeadingColor)};
+  background: ${(props) => (props.$active ? "rgba(0, 168, 132, 0.15)" : "transparent")};
+  color: ${(props) =>
+    props.$active ? "#00a884" : props.theme.common.subHeadingColor};
+  font-size: 0.75rem;
+  white-space: nowrap;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+`;
+
+export const ManualSwitch = styled.span<{ $active: boolean }>`
+  position: relative;
+  width: 28px;
+  height: 14px;
+  border-radius: 7px;
+  background: ${(props) =>
+    props.$active ? "#00a884" : props.theme.common.subHeadingColor};
+  transition: background 0.15s ease-in-out;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: ${(props) => (props.$active ? "16px" : "2px")};
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #fff;
+    transition: left 0.15s ease-in-out;
+  }
+`;
+
 export const Action = styled.button<any>`
   ${actionStyles}
 `;
