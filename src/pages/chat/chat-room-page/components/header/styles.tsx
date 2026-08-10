@@ -137,6 +137,78 @@ export const actionStyles = css`
   cursor: pointer;
 `;
 
+export const ManualToggle = styled.button<{ $active: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  margin-left: 12px;
+  padding: 5px 10px;
+  border: 1px solid
+    ${(props) => (props.$active ? "#00a884" : props.theme.common.subHeadingColor)};
+  border-radius: 999px;
+  background: ${(props) => (props.$active ? "rgba(0, 168, 132, 0.15)" : "transparent")};
+  color: ${(props) => (props.$active ? "#00a884" : props.theme.common.subHeadingColor)};
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: ${(props) =>
+      props.$active ? "rgba(0, 168, 132, 0.22)" : "rgba(255, 255, 255, 0.06)"};
+  }
+
+  &:focus-visible {
+    outline: 2px solid #00a884;
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: wait;
+  }
+
+  @media screen and (max-width: 420px) {
+    gap: 6px;
+    margin-left: 4px;
+    padding: 5px 7px;
+  }
+`;
+
+export const ManualSwitch = styled.span<{ $active: boolean }>`
+  position: relative;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 14px;
+  border-radius: 999px;
+  background: ${(props) =>
+    props.$active ? "#00a884" : props.theme.common.subHeadingColor};
+  transition: background-color 0.15s ease;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: ${(props) => (props.$active ? "16px" : "2px")};
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+    transition: left 0.15s ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &, &::after {
+      transition: none;
+    }
+  }
+`;
+
 export const Action = styled.button<any>`
   ${actionStyles}
 `;

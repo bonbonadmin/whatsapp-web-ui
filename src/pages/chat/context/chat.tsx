@@ -17,6 +17,15 @@ type User = {
 
 type SearchResult = Inbox | Message; // Adjust based on your API response
 
+export type ManualState = {
+  participantId: string;
+  hasThread: boolean;
+  manual: boolean;
+  timeManual: string | null;
+  manualExpiresAt: string | null;
+  manualWindowHours: number;
+};
+
 type ChatContextProp = {
   user: User;
   inbox: Inbox[];
@@ -38,6 +47,9 @@ type ChatContextProp = {
   loadMore: () => void;
   isFetchInbox: boolean;
   recentOrders: RecentOrder[];
+  manualState?: ManualState;
+  isTogglingManual: boolean;
+  onToggleManual: (next: boolean) => void;
 };
 
 const initialValue: ChatContextProp = {
@@ -51,6 +63,11 @@ const initialValue: ChatContextProp = {
   replyTarget: null,
   isFetchInbox: false,
   recentOrders: [],
+  manualState: undefined,
+  isTogglingManual: false,
+  onToggleManual() {
+    throw new Error();
+  },
   onChangeChat() {
     throw new Error();
   },
@@ -99,12 +116,15 @@ export default function ChatProvider(props: { children: any }) {
   const [isFetchInbox, setIsFetchInbox] = useState<boolean>(false);
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [replyTarget, setReplyTarget] = useState<Message | null>(null);
+  const [manualState, setManualState] = useState<ManualState>();
+  const [isTogglingManual, setIsTogglingManual] = useState(false);
   const baseURL = process.env.REACT_APP_API_URL;
 
   const activeChatRef = useRef(activeChat);
   const lastUpdateRef = useRef(lastUpdate);
   const toggleSearchRef = useRef(toggleSearch);
   const isFetchInboxRef = useRef(isFetchInbox);
+  const manualRequestRef = useRef(0);
 
   // Update the ref whenever activeChat changes
   useEffect(() => {
@@ -123,10 +143,90 @@ export default function ChatProvider(props: { children: any }) {
     isFetchInboxRef.current = isFetchInbox;
   }, [isFetchInbox]);
 
+  const toManualState = useCallback(
+    (participantId: string, payload: any): ManualState => ({
+      participantId,
+      hasThread: Boolean(payload?.has_thread),
+      manual: Number(payload?.manual) === 1,
+      timeManual: payload?.time_manual ?? null,
+      manualExpiresAt: payload?.manual_expires_at ?? null,
+      manualWindowHours: Number(payload?.manual_window_hours) || 3,
+    }),
+    []
+  );
+
+  const getWaHeaders = useCallback(() => {
+    const waId = localStorage.getItem("wa:selectedId") || "";
+    return waId ? { "x-wa-id": waId } : {};
+  }, []);
+
+  const fetchManual = useCallback(
+    async (participantId?: string) => {
+      if (!participantId) return;
+
+      const requestId = ++manualRequestRef.current;
+
+      try {
+        const response = await axios.get(
+          `${baseURL}/message-inbox/${encodeURIComponent(participantId)}/manual`,
+          { headers: getWaHeaders() }
+        );
+
+        if (requestId === manualRequestRef.current) {
+          setManualState(toManualState(participantId, response.data?.data));
+        }
+      } catch (error) {
+        if (requestId === manualRequestRef.current) {
+          setManualState(undefined);
+        }
+        console.error("Error fetching manual state:", error);
+      }
+    },
+    [baseURL, getWaHeaders, toManualState]
+  );
+
+  const handleToggleManual = async (next: boolean) => {
+    const participantId = activeChatRef.current?.participantId;
+    if (!participantId || isTogglingManual) return;
+
+    const previous = manualState;
+    setManualState((current) =>
+      current?.participantId === participantId
+        ? {
+            ...current,
+            manual: next,
+            timeManual: next ? new Date().toISOString() : null,
+          }
+        : current
+    );
+    setIsTogglingManual(true);
+
+    try {
+      const response = await axios.patch(
+        `${baseURL}/message-inbox/${encodeURIComponent(participantId)}/manual`,
+        { manual: next ? 1 : 0 },
+        { headers: getWaHeaders() }
+      );
+
+      if (activeChatRef.current?.participantId === participantId) {
+        setManualState(toManualState(participantId, response.data?.data));
+      }
+    } catch (error) {
+      if (activeChatRef.current?.participantId === participantId) {
+        setManualState(previous);
+      }
+      console.error("Error updating manual state:", error);
+    } finally {
+      setIsTogglingManual(false);
+    }
+  };
+
   const handleChangeChat = (chat: Inbox) => {
     setActiveChat(chat);
     setReplyTarget(null);
+    setManualState(undefined);
     fetchMessages(chat.participantId);
+    fetchManual(chat.participantId);
   };
 
   const handleFirstOpenChat = (condition: boolean) => {
@@ -148,6 +248,7 @@ export default function ChatProvider(props: { children: any }) {
       await axios.post(`${baseURL}/message/send`, payload);
       setReplyTarget(null);
       fetchMessages(msg.to);
+      fetchManual(msg.to);
     } catch (error) {
       console.error("Error fetching messages list:", error);
     }
@@ -486,6 +587,7 @@ export default function ChatProvider(props: { children: any }) {
       await axios.post(`${baseURL}/message/send`, payload);
       setReplyTarget(null);
       fetchMessages(activeChat?.participantId);
+      fetchManual(activeChat?.participantId);
     } catch (error) {
       console.error("Error upload image", error);
     }
@@ -505,6 +607,9 @@ export default function ChatProvider(props: { children: any }) {
         replyTarget,
         isFetchInbox,
         recentOrders,
+        manualState,
+        isTogglingManual,
+        onToggleManual: handleToggleManual,
         onChangeChat: handleChangeChat,
         onSendMessage: handleSendMessage,
         onUploadFile: handleFileUpload,

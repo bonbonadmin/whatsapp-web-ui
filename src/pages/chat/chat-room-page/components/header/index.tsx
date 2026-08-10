@@ -9,10 +9,13 @@ import {
   AvatarWrapper,
   BackButton,
   Container,
+  ManualSwitch,
+  ManualToggle,
   Name,
   ProfileWrapper,
   Subtitle,
 } from "./styles";
+import { useChatContext } from "pages/chat/context/chat";
 
 type HeaderProps = {
   onSearchClick: Function;
@@ -22,9 +25,32 @@ type HeaderProps = {
   subTitle: string;
 };
 
+const formatManualTime = (iso: string | null) => {
+  if (!iso) return "";
+
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return new Intl.DateTimeFormat(undefined, {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
 export default function Header(props: HeaderProps) {
   const navigate = useNavigate();
   const { title, subTitle, image, onProfileClick, onSearchClick } = props;
+  const { manualState, isTogglingManual, onToggleManual } = useChatContext();
+  const isManual = Boolean(manualState?.manual);
+  const showManualToggle = Boolean(manualState?.hasThread);
+  const manualTitle = isManual
+    ? `Manual on since ${formatManualTime(manualState?.timeManual ?? null)}` +
+      (manualState?.manualExpiresAt
+        ? ` — auto-off at ${formatManualTime(manualState.manualExpiresAt)}`
+        : "")
+    : "AI is handling this chat. Turn on manual to take over.";
 
   return (
     <Container>
@@ -39,6 +65,20 @@ export default function Header(props: HeaderProps) {
         {subTitle && <Subtitle>{subTitle}</Subtitle>}
       </ProfileWrapper>
       <Actions>
+        {showManualToggle && (
+          <ManualToggle
+            type="button"
+            $active={isManual}
+            disabled={isTogglingManual}
+            title={manualTitle}
+            aria-label={isManual ? "Turn off manual mode" : "Turn on manual mode"}
+            aria-pressed={isManual}
+            onClick={() => onToggleManual(!isManual)}
+          >
+            <ManualSwitch $active={isManual} aria-hidden="true" />
+            <span>{isManual ? "Manual" : "Auto"}</span>
+          </ManualToggle>
+        )}
         <Action onClick={onSearchClick}>
           <Icon id="search" className="icon search-icon" />
         </Action>
