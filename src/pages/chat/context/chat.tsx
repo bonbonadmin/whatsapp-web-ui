@@ -218,6 +218,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
             errors: v.errors ?? null,
             isOpponent: v.from_me === 0,
             messageType: v.message_type,
+            templateMessageText: v.template_message_text ?? null,
             mediaLocation: v.media_location,
             createdAtISO: created.toISOString(),
             contextMessageId,

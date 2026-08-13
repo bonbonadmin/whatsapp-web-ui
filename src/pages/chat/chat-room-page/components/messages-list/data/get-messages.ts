@@ -10,6 +10,7 @@ export type Message = {
   messageStatus: string;
   isOpponent: boolean;
   messageType?: string;
+  templateMessageText?: string | null;
   mediaLocation?: string;
   fullTimestamp?: string;
   functionName?: string;
@@ -48,6 +49,7 @@ export type MessageResponse = {
   from_me: number;
   message_text: string;
   message_type: string;
+  template_message_text?: string | null;
   media_location: string;
   message_status: number;
   participant_message_status: string;

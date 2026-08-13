@@ -17,6 +17,7 @@ import {
   QuotedMessagePreview,
   QuotedMessageText,
   ReplyActionButton,
+  TemplateMessageTooltip,
 } from "./styles";
 import { useChatContext } from "pages/chat/context/chat";
 
@@ -262,7 +263,9 @@ const SingleMessage = forwardRef(
   ) => {
     const { message, isHighlighted, mediaUrl = "", onQuotedMessageClick, onReplyToMessage } = props;
     const [isModalOpen, setModalOpen] = useState(false);
+    const [isTemplateModalOpen, setTemplateModalOpen] = useState(false);
     const closeModal = () => setModalOpen(false);
+    const closeTemplateModal = () => setTemplateModalOpen(false);
 
     const fileName = message.mediaLocation
       ? message.mediaLocation.substring(message.mediaLocation.lastIndexOf("/") + 1)
@@ -280,6 +283,7 @@ const SingleMessage = forwardRef(
         ? "You"
         : quotedMessage?.participantName || "Customer";
     const quotedText = getQuotedMessageText(quotedMessage);
+    const templateTooltipId = `template-message-${message.id}-tooltip`;
 
     const errorTitles = useMemo(() => {
       if (!isFailed) return [];
@@ -290,17 +294,31 @@ const SingleMessage = forwardRef(
     }, [isFailed, (message as any).errors]);
 
     useEffect(() => {
-      if (!isModalOpen) return;
+      if (!isModalOpen && !isTemplateModalOpen) return;
 
       const handleKeyDown = (event: KeyboardEvent) => {
         if (event.key === "Escape") {
           closeModal();
+          closeTemplateModal();
         }
       };
 
       window.addEventListener("keydown", handleKeyDown);
       return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [isModalOpen]);
+    }, [isModalOpen, isTemplateModalOpen]);
+
+    const openTemplatePreview = (event: React.MouseEvent<HTMLDivElement>) => {
+      if (message.messageType !== "template" || !message.templateMessageText) return;
+      if ((event.target as HTMLElement).closest("button, a")) return;
+      setTemplateModalOpen(true);
+    };
+
+    const handleTemplatePreviewKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (message.messageType !== "template" || !message.templateMessageText) return;
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      setTemplateModalOpen(true);
+    };
 
     return (
       <>
@@ -313,7 +331,20 @@ const SingleMessage = forwardRef(
             border: isHighlighted ? "1px solid #FFD700" : "none",
             paddingLeft: message.messageType === "template" ? "30px" : undefined,
           }}
+          tabIndex={message.messageType === "template" && message.templateMessageText ? 0 : undefined}
+          aria-describedby={
+            message.messageType === "template" && message.templateMessageText
+              ? templateTooltipId
+              : undefined
+          }
+          onClick={openTemplatePreview}
+          onKeyDown={handleTemplatePreviewKeyDown}
         >
+          {message.messageType === "template" && message.templateMessageText && (
+            <TemplateMessageTooltip id={templateTooltipId} role="tooltip">
+              {message.templateMessageText}
+            </TemplateMessageTooltip>
+          )}
           {message.messageType === "template" && (
             <div
               style={{
@@ -422,6 +453,31 @@ const SingleMessage = forwardRef(
           </ChatMessageFooter>
         </ChatMessage>
 
+        {isTemplateModalOpen && message.templateMessageText && (
+          <div style={modalStyles.overlay} onClick={closeTemplateModal}>
+            <div
+              style={modalStyles.templateModalContent}
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={`template-message-${message.id}-title`}
+            >
+              <div style={modalStyles.templateModalHeader}>
+                <strong id={`template-message-${message.id}-title`}>Template message</strong>
+                <button
+                  type="button"
+                  style={modalStyles.templateCloseButton}
+                  onClick={closeTemplateModal}
+                  aria-label="Close template message preview"
+                >
+                  ×
+                </button>
+              </div>
+              <div style={modalStyles.templateMessageBody}>{message.templateMessageText}</div>
+            </div>
+          </div>
+        )}
+
         {isModalOpen && (
           <div style={modalStyles.overlay} onClick={closeModal}>
             <div
@@ -500,6 +556,46 @@ const modalStyles: Record<string, CSSProperties> = {
     alignItems: "center",
     boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
     backgroundColor: "transparent",
+  },
+  templateModalContent: {
+    width: "min(520px, calc(100vw - 32px))",
+    maxHeight: "min(720px, calc(100vh - 48px))",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+    backgroundColor: "#111b21",
+    color: "#f0f2f5",
+    border: "1px solid rgba(255, 255, 255, 0.14)",
+    borderRadius: 12,
+    boxShadow: "0 16px 48px rgba(0, 0, 0, 0.4)",
+  },
+  templateModalHeader: {
+    minHeight: 48,
+    padding: "0 8px 0 16px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+  },
+  templateCloseButton: {
+    width: 40,
+    height: 40,
+    padding: 0,
+    border: 0,
+    borderRadius: "50%",
+    background: "transparent",
+    color: "#f0f2f5",
+    cursor: "pointer",
+    fontSize: 28,
+    lineHeight: "40px",
+  },
+  templateMessageBody: {
+    padding: 16,
+    overflowY: "auto",
+    whiteSpace: "pre-wrap",
+    overflowWrap: "anywhere",
+    fontSize: 14,
+    lineHeight: 1.55,
   },
   image: {
     maxWidth: "100%",
