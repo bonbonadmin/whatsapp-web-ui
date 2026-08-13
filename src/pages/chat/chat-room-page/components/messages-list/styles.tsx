@@ -216,33 +216,19 @@ export const TemplateMessageTooltip = styled.span`
   background: #111b21;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;
-  bottom: 100%;
+  box-sizing: border-box;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
   color: #f0f2f5;
   display: block;
   font-size: 0.78rem;
-  left: 0;
   line-height: 1.45;
-  max-height: min(360px, 60vh);
-  max-width: min(420px, calc(100vw - 32px));
-  min-width: min(280px, calc(100vw - 32px));
-  opacity: 0;
+  max-width: calc(100vw - 32px);
   overflow: auto;
   padding: 10px 12px;
-  pointer-events: auto;
-  position: absolute;
-  transform: translateY(4px);
-  transition: opacity 0.15s ease, transform 0.15s ease;
-  visibility: hidden;
+  pointer-events: none;
+  position: fixed;
   white-space: pre-wrap;
-  z-index: 20;
-
-  ${ChatMessage}:hover &,
-  ${ChatMessage}:focus-within & {
-    opacity: 1;
-    transform: translateY(0);
-    visibility: visible;
-  }
+  z-index: 2000;
 `;
 
 export const ChatMessageFiller = styled.span`

@@ -1,4 +1,5 @@
 import { CSSProperties, forwardRef, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation, useParams } from "react-router-dom";
 
 import Icon from "common/components/icons";
@@ -264,6 +265,15 @@ const SingleMessage = forwardRef(
     const { message, isHighlighted, mediaUrl = "", onQuotedMessageClick, onReplyToMessage } = props;
     const [isModalOpen, setModalOpen] = useState(false);
     const [isTemplateModalOpen, setTemplateModalOpen] = useState(false);
+    const [isTemplateTooltipOpen, setTemplateTooltipOpen] = useState(false);
+    const [templateTooltipPosition, setTemplateTooltipPosition] = useState({
+      left: 16,
+      top: 16,
+      maxHeight: 360,
+      ready: false,
+    });
+    const bubbleRef = useRef<HTMLDivElement | null>(null);
+    const templateTooltipRef = useRef<HTMLSpanElement | null>(null);
     const closeModal = () => setModalOpen(false);
     const closeTemplateModal = () => setTemplateModalOpen(false);
 
@@ -284,6 +294,12 @@ const SingleMessage = forwardRef(
         : quotedMessage?.participantName || "Customer";
     const quotedText = getQuotedMessageText(quotedMessage);
     const templateTooltipId = `template-message-${message.id}-tooltip`;
+
+    const saveBubbleRef = (element: HTMLDivElement | null) => {
+      bubbleRef.current = element;
+      if (typeof ref === "function") ref(element);
+      else if (ref) ref.current = element;
+    };
 
     const errorTitles = useMemo(() => {
       if (!isFailed) return [];
@@ -307,6 +323,64 @@ const SingleMessage = forwardRef(
       return () => window.removeEventListener("keydown", handleKeyDown);
     }, [isModalOpen, isTemplateModalOpen]);
 
+    useEffect(() => {
+      if (!isTemplateTooltipOpen) return;
+
+      const positionTooltip = () => {
+        const bubble = bubbleRef.current;
+        const tooltip = templateTooltipRef.current;
+        if (!bubble || !tooltip) return;
+
+        const bubbleRect = bubble.getBoundingClientRect();
+        let scrollBoundary: HTMLElement | null = bubble.parentElement;
+
+        while (scrollBoundary) {
+          const style = window.getComputedStyle(scrollBoundary);
+          if (/auto|scroll/.test(style.overflowY)) break;
+          scrollBoundary = scrollBoundary.parentElement;
+        }
+
+        const boundaryRect = scrollBoundary?.getBoundingClientRect();
+        const viewportMargin = 16;
+        const gap = 8;
+        const boundaryTop = Math.max(viewportMargin, (boundaryRect?.top ?? 0) + gap);
+        const boundaryBottom = Math.min(
+          window.innerHeight - viewportMargin,
+          (boundaryRect?.bottom ?? window.innerHeight) - gap
+        );
+        const boundaryLeft = Math.max(viewportMargin, (boundaryRect?.left ?? 0) + gap);
+        const boundaryRight = Math.min(
+          window.innerWidth - viewportMargin,
+          (boundaryRect?.right ?? window.innerWidth) - gap
+        );
+        tooltip.style.width = `${Math.max(200, Math.min(420, boundaryRight - boundaryLeft))}px`;
+        const tooltipRect = tooltip.getBoundingClientRect();
+        const aboveSpace = Math.max(0, bubbleRect.top - gap - boundaryTop);
+        const belowSpace = Math.max(0, boundaryBottom - bubbleRect.bottom - gap);
+        const placeAbove = aboveSpace >= Math.min(tooltipRect.height, 160) || aboveSpace >= belowSpace;
+        const availableHeight = placeAbove ? aboveSpace : belowSpace;
+        const maxHeight = Math.max(80, Math.min(360, availableHeight));
+        const visibleHeight = Math.min(tooltipRect.height, maxHeight);
+        const top = placeAbove
+          ? Math.max(boundaryTop, bubbleRect.top - gap - visibleHeight)
+          : Math.min(boundaryBottom - visibleHeight, bubbleRect.bottom + gap);
+        const left = Math.min(
+          boundaryRight - tooltipRect.width,
+          Math.max(boundaryLeft, bubbleRect.right - tooltipRect.width)
+        );
+
+        setTemplateTooltipPosition({ left, top, maxHeight, ready: true });
+      };
+
+      positionTooltip();
+      window.addEventListener("resize", positionTooltip);
+      window.addEventListener("scroll", positionTooltip, true);
+      return () => {
+        window.removeEventListener("resize", positionTooltip);
+        window.removeEventListener("scroll", positionTooltip, true);
+      };
+    }, [isTemplateTooltipOpen, message.templateMessageText]);
+
     const openTemplatePreview = (event: React.MouseEvent<HTMLDivElement>) => {
       if (message.messageType !== "template" || !message.templateMessageText) return;
       if ((event.target as HTMLElement).closest("button, a")) return;
@@ -320,12 +394,18 @@ const SingleMessage = forwardRef(
       setTemplateModalOpen(true);
     };
 
+    const showTemplateTooltip = () => {
+      if (message.messageType !== "template" || !message.templateMessageText) return;
+      setTemplateTooltipPosition((current) => ({ ...current, ready: false }));
+      setTemplateTooltipOpen(true);
+    };
+
     return (
       <>
         <ChatMessage
           key={message.id}
           className={message.isOpponent ? "chat__msg--received" : "chat__msg--sent"}
-          ref={ref}
+          ref={saveBubbleRef}
           style={{
             position: "relative",
             border: isHighlighted ? "1px solid #FFD700" : "none",
@@ -339,12 +419,11 @@ const SingleMessage = forwardRef(
           }
           onClick={openTemplatePreview}
           onKeyDown={handleTemplatePreviewKeyDown}
+          onMouseEnter={showTemplateTooltip}
+          onMouseLeave={() => setTemplateTooltipOpen(false)}
+          onFocus={showTemplateTooltip}
+          onBlur={() => setTemplateTooltipOpen(false)}
         >
-          {message.messageType === "template" && message.templateMessageText && (
-            <TemplateMessageTooltip id={templateTooltipId} role="tooltip">
-              {message.templateMessageText}
-            </TemplateMessageTooltip>
-          )}
           {message.messageType === "template" && (
             <div
               style={{
@@ -453,30 +532,50 @@ const SingleMessage = forwardRef(
           </ChatMessageFooter>
         </ChatMessage>
 
-        {isTemplateModalOpen && message.templateMessageText && (
-          <div style={modalStyles.overlay} onClick={closeTemplateModal}>
-            <div
-              style={modalStyles.templateModalContent}
-              onClick={(event) => event.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby={`template-message-${message.id}-title`}
+        {isTemplateTooltipOpen && message.templateMessageText &&
+          createPortal(
+            <TemplateMessageTooltip
+              ref={templateTooltipRef}
+              id={templateTooltipId}
+              role="tooltip"
+              style={{
+                left: templateTooltipPosition.left,
+                top: templateTooltipPosition.top,
+                maxHeight: templateTooltipPosition.maxHeight,
+                visibility: templateTooltipPosition.ready ? "visible" : "hidden",
+              }}
             >
-              <div style={modalStyles.templateModalHeader}>
-                <strong id={`template-message-${message.id}-title`}>Template message</strong>
-                <button
-                  type="button"
-                  style={modalStyles.templateCloseButton}
-                  onClick={closeTemplateModal}
-                  aria-label="Close template message preview"
-                >
-                  ×
-                </button>
+              {message.templateMessageText}
+            </TemplateMessageTooltip>,
+            document.body
+          )}
+
+        {isTemplateModalOpen && message.templateMessageText &&
+          createPortal(
+            <div style={modalStyles.templateOverlay} onClick={closeTemplateModal}>
+              <div
+                style={modalStyles.templateModalContent}
+                onClick={(event) => event.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={`template-message-${message.id}-title`}
+              >
+                <div style={modalStyles.templateModalHeader}>
+                  <strong id={`template-message-${message.id}-title`}>Template message</strong>
+                  <button
+                    type="button"
+                    style={modalStyles.templateCloseButton}
+                    onClick={closeTemplateModal}
+                    aria-label="Close template message preview"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div style={modalStyles.templateMessageBody}>{message.templateMessageText}</div>
               </div>
-              <div style={modalStyles.templateMessageBody}>{message.templateMessageText}</div>
-            </div>
-          </div>
-        )}
+            </div>,
+            document.body
+          )}
 
         {isModalOpen && (
           <div style={modalStyles.overlay} onClick={closeModal}>
@@ -545,6 +644,19 @@ const modalStyles: Record<string, CSSProperties> = {
     alignItems: "center",
     zIndex: 1000,
   },
+  templateOverlay: {
+    position: "fixed",
+    inset: 0,
+    width: "100vw",
+    height: "100dvh",
+    padding: "calc(env(safe-area-inset-top, 0px) + 20px) 20px calc(env(safe-area-inset-bottom, 0px) + 20px)",
+    boxSizing: "border-box",
+    backgroundColor: "rgba(0, 0, 0, 0.72)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 4000,
+  },
   modalContent: {
     position: "relative",
     padding: "0",
@@ -558,8 +670,8 @@ const modalStyles: Record<string, CSSProperties> = {
     backgroundColor: "transparent",
   },
   templateModalContent: {
-    width: "min(520px, calc(100vw - 32px))",
-    maxHeight: "min(720px, calc(100vh - 48px))",
+    width: "min(420px, 100%)",
+    maxHeight: "min(560px, 68dvh)",
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
@@ -570,7 +682,7 @@ const modalStyles: Record<string, CSSProperties> = {
     boxShadow: "0 16px 48px rgba(0, 0, 0, 0.4)",
   },
   templateModalHeader: {
-    minHeight: 48,
+    minHeight: 44,
     padding: "0 8px 0 16px",
     display: "flex",
     alignItems: "center",
