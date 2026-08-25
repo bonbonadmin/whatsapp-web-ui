@@ -1,4 +1,4 @@
-export type MessageStatus = "failed" | "delivered" | "sent" | 'read';
+export type MessageStatus = "failed" | "delivered" | "sent" | "read";
 
 export type EventSummary = {
   event_name: string;
@@ -18,6 +18,8 @@ export type Booking = {
 
 export type Inbox = {
   id: string;
+  /** The WhatsApp line this conversation belongs to (used by the aggregated inbox). */
+  waId?: string;
   name: string;
   image: string;
   updatedAt: string;
@@ -48,4 +50,4 @@ export type InboxResponse = {
   created_at: Date;
   updated_at: string;
   unread_msg: number;
-}
+};

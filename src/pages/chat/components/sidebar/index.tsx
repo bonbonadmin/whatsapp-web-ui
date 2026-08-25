@@ -11,7 +11,7 @@ import ToggleSearch from "../search-toggle";
 import Icon from "common/components/icons";
 import { useAppTheme } from "common/theme";
 import { Inbox } from "common/types/common.type";
-import { useChatContext } from "pages/chat/context/chat";
+import { ALL_WA_IDS, useChatContext } from "pages/chat/context/chat";
 import OpenAIQueuePanel from "pages/openai-queue/panel";
 import {
   Actions,
@@ -79,7 +79,7 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
   // headers helper — ALWAYS a Record<string,string>
   const waHeaders = useMemo<Record<string, string>>(() => {
     const h: Record<string, string> = {};
-    if (selectedWaId) h["x-wa-id"] = selectedWaId;
+    if (selectedWaId && selectedWaId !== ALL_WA_IDS) h["x-wa-id"] = selectedWaId;
     return h;
   }, [selectedWaId]);
 
@@ -136,7 +136,8 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
     (id: string) => {
       setSelectedWaId(id);
       localStorage.setItem("wa:selectedId", id);
-      axios.defaults.headers.common["x-wa-id"] = id;
+      if (id && id !== ALL_WA_IDS) axios.defaults.headers.common["x-wa-id"] = id;
+      else delete axios.defaults.headers.common["x-wa-id"];
 
       // Keep UX stable: close search toggle (optional) then re-run search with current text
       chatCtx.onToggleSearch(false);
@@ -158,10 +159,11 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
       const storedId = localStorage.getItem("wa:selectedId") || lines[0]?.id || "";
       setSelectedWaId(storedId);
 
-      if (storedId) {
+      if (storedId && storedId !== ALL_WA_IDS) {
         localStorage.setItem("wa:selectedId", storedId);
         axios.defaults.headers.common["x-wa-id"] = storedId;
       } else {
+        if (storedId === ALL_WA_IDS) localStorage.setItem("wa:selectedId", storedId);
         delete axios.defaults.headers.common["x-wa-id"];
       }
 
@@ -205,7 +207,8 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
     chatCtx.onChangeChat(chat);
     chatCtx.onFirstOpenChat(true);
 
-    const q = selectedWaId ? `?waId=${encodeURIComponent(selectedWaId)}` : "";
+    const sourceWaId = chat.waId || (selectedWaId === ALL_WA_IDS ? "" : selectedWaId);
+    const q = sourceWaId ? `?waId=${encodeURIComponent(sourceWaId)}` : "";
     navigate("/" + chat.participantId + q);
   };
 
@@ -235,13 +238,13 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
         pick<string>(x, ["updatedAt", "updated_at"]) ??
         null;
 
-      const overlay = pinOverlay[x.participantId];
+      const overlay = pinOverlay[`${x.waId || selectedWaId}:${x.participantId}`];
       const isPinned = overlay?.isPinned ?? basePinned;
       const pinnedAt = overlay?.pinnedAt ?? basePinnedAt;
 
       return { ...x, isPinned, pinnedAt, timestamp: baseLastTs } as Inbox;
     });
-  }, [chatCtx.inbox, pinOverlay]);
+  }, [chatCtx.inbox, pinOverlay, selectedWaId]);
 
   const openQueueParticipant = useCallback(
     (participantId: string) => {
@@ -262,7 +265,8 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
       chatCtx.onChangeChat(chat);
       chatCtx.onFirstOpenChat(true);
 
-      const q = selectedWaId ? `?waId=${encodeURIComponent(selectedWaId)}` : "";
+      const sourceWaId = chat.waId || (selectedWaId === ALL_WA_IDS ? "" : selectedWaId);
+      const q = sourceWaId ? `?waId=${encodeURIComponent(sourceWaId)}` : "";
       navigate("/" + id + q);
     },
     [chatCtx, mergedInbox, navigate, selectedWaId]
@@ -288,17 +292,20 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
   }, [mergedInbox]);
 
   // Optimistic toggle with rollback
-  const togglePin = async (participantId: string, next: boolean) => {
+  const togglePin = async (participantId: string, next: boolean, sourceWaId?: string) => {
     const now = new Date().toISOString();
+    const waId = sourceWaId || (selectedWaId === ALL_WA_IDS ? "" : selectedWaId);
+    if (!waId) return;
+    const overlayKey = `${waId}:${participantId}`;
     setPinOverlay((prev) => ({
       ...prev,
-      [participantId]: { isPinned: next, pinnedAt: next ? now : null },
+      [overlayKey]: { isPinned: next, pinnedAt: next ? now : null },
     }));
 
     try {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        ...waHeaders,
+        "x-wa-id": waId,
       };
 
       const res = await fetch(`${baseUrl}/message-inbox/${encodeURIComponent(participantId)}/pin`, {
@@ -312,7 +319,7 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
 
       setPinOverlay((prev) => ({
         ...prev,
-        [participantId]: {
+        [overlayKey]: {
           isPinned: normBool(json?.data?.is_pinned),
           pinnedAt: json?.data?.pinned_at ?? null,
         },
@@ -320,14 +327,14 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
     } catch {
       setPinOverlay((prev) => ({
         ...prev,
-        [participantId]: { isPinned: !next, pinnedAt: !next ? now : null },
+        [overlayKey]: { isPinned: !next, pinnedAt: !next ? now : null },
       }));
     }
   };
 
   const handleTemplateUpdate = async () => {
     try {
-      if (!selectedWaId) {
+      if (!selectedWaId || selectedWaId === ALL_WA_IDS) {
         setUpdateMessage("Please select a WhatsApp line first.");
         setShowUpdateModal(true);
         return;
@@ -394,6 +401,7 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
               onChange={(e) => onChangeLine(e.target.value)}
             >
               {waLines.length === 0 && <option value="">No WA lines</option>}
+              {waLines.length > 0 && <option value={ALL_WA_IDS}>All WA IDs</option>}
               {waLines.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.number ? `${l.number} · ${l.id}` : l.id}

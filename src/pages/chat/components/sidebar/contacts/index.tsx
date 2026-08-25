@@ -19,7 +19,7 @@ type InboxContactProps = {
   inbox: Inbox;
   onChangeChat?: (chat: Inbox) => void;
   isActive?: boolean;
-  onTogglePin?: (participantId: string, next: boolean) => void;
+  onTogglePin?: (participantId: string, next: boolean, waId?: string) => void;
 };
 
 export default function InboxContact(props: InboxContactProps) {
@@ -80,11 +80,7 @@ export default function InboxContact(props: InboxContactProps) {
           {timestamp && lastMessage ? (
             <Time>{toLocalInboxTime(timestamp)}</Time>
           ) : (
-            <Trailing
-              {...props.inbox}
-              showChevron={hovered}
-              onTogglePin={onTogglePin}
-            />
+            <Trailing {...props.inbox} showChevron={hovered} onTogglePin={onTogglePin} />
           )}
         </TopContent>
 
@@ -94,11 +90,7 @@ export default function InboxContact(props: InboxContactProps) {
           </MessageWrapper>
 
           {timestamp && lastMessage && (
-            <Trailing
-              {...props.inbox}
-              showChevron={hovered}
-              onTogglePin={onTogglePin}
-            />
+            <Trailing {...props.inbox} showChevron={hovered} onTogglePin={onTogglePin} />
           )}
         </BottomContent>
       </Content>
@@ -154,16 +146,13 @@ function Message(props: Pick<Inbox, "lastMessage" | "lastMessageStatus" | "fromM
   );
 }
 
-type TrailingProps = Pick<
-  Inbox,
-  "participantId" | "isPinned" | "notificationsCount"
-> & {
-  onTogglePin?: (participantId: string, next: boolean) => void;
+type TrailingProps = Pick<Inbox, "participantId" | "waId" | "isPinned" | "notificationsCount"> & {
+  onTogglePin?: (participantId: string, next: boolean, waId?: string) => void;
   showChevron?: boolean;
 };
 
 function Trailing(props: TrailingProps) {
-  const { participantId, isPinned, notificationsCount, onTogglePin, showChevron } = props;
+  const { participantId, waId, isPinned, notificationsCount, onTogglePin, showChevron } = props;
 
   // robust boolean coercion (handles 0/1, "0"/"1", true/false, "true"/"false")
   const pinned =
@@ -175,7 +164,7 @@ function Trailing(props: TrailingProps) {
 
   const handleChevronClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onTogglePin?.(participantId, !pinned); // use the coerced boolean
+    onTogglePin?.(participantId, !pinned, waId); // use the coerced boolean
   };
 
   return (

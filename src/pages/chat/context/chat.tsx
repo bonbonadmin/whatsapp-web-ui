@@ -16,6 +16,7 @@ type BookingEvent = { event_name: string; started_at: string };
 
 export type ManualState = {
   participantId: string;
+  waId?: string;
   hasThread: boolean;
   manual: boolean;
   timeManual: string | null;
@@ -40,7 +41,13 @@ type ChatContextProp = {
   onChangeChat: (chat: Inbox) => void;
   onFirstOpenChat: (condition: boolean) => void;
   onSendMessage: (message: MessagePayload) => void;
-  onUploadFile: (file: File, msg: string, type: string, nonManual: boolean, contextMessageId?: string | null) => void;
+  onUploadFile: (
+    file: File,
+    msg: string,
+    type: string,
+    nonManual: boolean,
+    contextMessageId?: string | null
+  ) => void;
   onReplyToMessage: (message: Message) => void;
   onClearReplyTarget: () => void;
   onSearch: (query: string) => void;
@@ -69,20 +76,59 @@ const initialValue: ChatContextProp = {
   bookings: undefined,
   manualState: undefined,
   isTogglingManual: false,
-  onToggleManual() { throw new Error(); },
-  onChangeChat() { throw new Error(); },
-  onSendMessage() { throw new Error(); },
-  onUploadFile() { throw new Error(); },
-  onReplyToMessage() { throw new Error(); },
-  onClearReplyTarget() { throw new Error(); },
-  onFirstOpenChat() { throw new Error(); },
-  onSearch() { throw new Error(); },
-  onToggleSearch() { throw new Error(); },
-  loadMore() { throw new Error("loadMore function must be overridden"); },
-  reloadMessages() { throw new Error(); },
+  onToggleManual() {
+    throw new Error();
+  },
+  onChangeChat() {
+    throw new Error();
+  },
+  onSendMessage() {
+    throw new Error();
+  },
+  onUploadFile() {
+    throw new Error();
+  },
+  onReplyToMessage() {
+    throw new Error();
+  },
+  onClearReplyTarget() {
+    throw new Error();
+  },
+  onFirstOpenChat() {
+    throw new Error();
+  },
+  onSearch() {
+    throw new Error();
+  },
+  onToggleSearch() {
+    throw new Error();
+  },
+  loadMore() {
+    throw new Error("loadMore function must be overridden");
+  },
+  reloadMessages() {
+    throw new Error();
+  },
 };
 
 const LS_ACTIVE_CHAT = "chat:activeParticipantId";
+const LS_ACTIVE_CHAT_WA_ID = "chat:activeWaId";
+export const ALL_WA_IDS = "__all__";
+
+type StoredWaLine = { id: string };
+
+const getSelectedWaIds = (): string[] => {
+  const selected = localStorage.getItem("wa:selectedId") || "";
+  if (selected && selected !== ALL_WA_IDS) return [selected];
+  if (selected !== ALL_WA_IDS) return [];
+
+  try {
+    const lines = JSON.parse(localStorage.getItem("wa:ids") || "[]") as StoredWaLine[];
+    return Array.isArray(lines) ? lines.map((line) => line?.id).filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+};
 
 const fmtTs = (d: Date) => {
   const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
@@ -118,39 +164,48 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
   const isFetchInboxRef = useRef(isFetchInbox);
   const didRestoreActiveRef = useRef(false);
   const messageRequestRef = useRef(0);
+  const inboxRequestRef = useRef(0);
 
-  useEffect(() => { activeChatRef.current = activeChat; }, [activeChat]);
-  useEffect(() => { lastUpdateRef.current = lastUpdate; }, [lastUpdate]);
-  useEffect(() => { toggleSearchRef.current = toggleSearch; }, [toggleSearch]);
-  useEffect(() => { isFetchInboxRef.current = isFetchInbox; }, [isFetchInbox]);
+  useEffect(() => {
+    activeChatRef.current = activeChat;
+  }, [activeChat]);
+  useEffect(() => {
+    lastUpdateRef.current = lastUpdate;
+  }, [lastUpdate]);
+  useEffect(() => {
+    toggleSearchRef.current = toggleSearch;
+  }, [toggleSearch]);
+  useEffect(() => {
+    isFetchInboxRef.current = isFetchInbox;
+  }, [isFetchInbox]);
 
   // Seed default WA header from storage on mount
   useEffect(() => {
     const storedId = localStorage.getItem("wa:selectedId") || "";
-    if (storedId) axios.defaults.headers.common["x-wa-id"] = storedId;
+    if (storedId && storedId !== ALL_WA_IDS) axios.defaults.headers.common["x-wa-id"] = storedId;
     else delete axios.defaults.headers.common["x-wa-id"];
   }, []);
-  
 
   const fetchMessages = useCallback(
-    async (id: string, days: number = 365) => {
+    async (id: string, days: number = 365, sourceWaId?: string) => {
       if (!id) return;
       const requestId = ++messageRequestRef.current;
       try {
-        const waId = localStorage.getItem("wa:selectedId") || "";
+        const selectedWaId = localStorage.getItem("wa:selectedId") || "";
+        const waId = sourceWaId || (selectedWaId === ALL_WA_IDS ? "" : selectedWaId);
         const headers: Record<string, string> = {};
         if (waId) headers["x-wa-id"] = waId;
 
-        const { data } = await axios.get(
-          `${baseURL}/message-inbox/${encodeURIComponent(id)}`,
-          { params: { days }, headers }
-        );
+        const { data } = await axios.get(`${baseURL}/message-inbox/${encodeURIComponent(id)}`, {
+          params: { days },
+          headers,
+        });
 
         const rawBookings = Array.isArray(data?.bookings)
           ? data.bookings
           : Array.isArray(data?.bookingEvents)
-            ? data.bookingEvents
-            : [];
+          ? data.bookingEvents
+          : [];
         const nextBookings: Booking[] = rawBookings
           .map((e: any) => ({
             booking_id: String(e?.booking_id ?? ""),
@@ -182,7 +237,9 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
         };
         const fullTs = (d: Date) => {
           const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
-          return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+          return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(
+            d.getHours()
+          )}:${pad(d.getMinutes())}`;
         };
 
         // ===== messages -> UI =====
@@ -233,11 +290,11 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
           const created = new Date(t.created_at);
           return {
             id: String(t.id),
-            body: "",                         // rendered by ToolEventRow
+            body: "", // rendered by ToolEventRow
             date: created.toLocaleDateString(),
             timestamp: shortTs(created),
             fullTimestamp: fullTs(created),
-            messageStatus: "",               // not applicable
+            messageStatus: "", // not applicable
             isOpponent: false,
             messageType: "tool",
             createdAtISO: created.toISOString(),
@@ -270,21 +327,26 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
   // ===== manual (human takeover) toggle =====
   const manualRequestRef = useRef(0);
 
-  const toManualState = useCallback((participantId: string, payload: any): ManualState => ({
-    participantId,
-    hasThread: !!payload?.has_thread,
-    manual: Number(payload?.manual) === 1,
-    timeManual: payload?.time_manual ?? null,
-    manualExpiresAt: payload?.manual_expires_at ?? null,
-    manualWindowHours: Number(payload?.manual_window_hours) || 3,
-  }), []);
+  const toManualState = useCallback(
+    (participantId: string, payload: any, waId?: string): ManualState => ({
+      participantId,
+      waId,
+      hasThread: !!payload?.has_thread,
+      manual: Number(payload?.manual) === 1,
+      timeManual: payload?.time_manual ?? null,
+      manualExpiresAt: payload?.manual_expires_at ?? null,
+      manualWindowHours: Number(payload?.manual_window_hours) || 3,
+    }),
+    []
+  );
 
   const fetchManual = useCallback(
-    async (participantId: string) => {
+    async (participantId: string, sourceWaId?: string) => {
       if (!participantId) return;
       const requestId = ++manualRequestRef.current;
       try {
-        const waId = localStorage.getItem("wa:selectedId") || "";
+        const selectedWaId = localStorage.getItem("wa:selectedId") || "";
+        const waId = sourceWaId || (selectedWaId === ALL_WA_IDS ? "" : selectedWaId);
         const headers: Record<string, string> = {};
         if (waId) headers["x-wa-id"] = waId;
 
@@ -294,7 +356,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
         );
 
         if (requestId !== manualRequestRef.current) return;
-        setManualState(toManualState(participantId, data?.data));
+        setManualState(toManualState(participantId, data?.data, waId));
       } catch (error) {
         if (requestId === manualRequestRef.current) setManualState(undefined);
         console.error("Error fetching manual state:", error);
@@ -306,6 +368,7 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
   const handleToggleManual = useCallback(
     async (next: boolean) => {
       const participantId = activeChatRef.current?.participantId;
+      const sourceWaId = activeChatRef.current?.waId;
       if (!participantId) return;
 
       const previous = manualState;
@@ -318,7 +381,8 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
       setIsTogglingManual(true);
 
       try {
-        const waId = localStorage.getItem("wa:selectedId") || "";
+        const selectedWaId = localStorage.getItem("wa:selectedId") || "";
+        const waId = sourceWaId || (selectedWaId === ALL_WA_IDS ? "" : selectedWaId);
         const headers: Record<string, string> = {};
         if (waId) headers["x-wa-id"] = waId;
 
@@ -328,10 +392,18 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
           { headers }
         );
 
-        if (activeChatRef.current?.participantId !== participantId) return;
-        setManualState(toManualState(participantId, data?.data));
+        if (
+          activeChatRef.current?.participantId !== participantId ||
+          activeChatRef.current?.waId !== sourceWaId
+        )
+          return;
+        setManualState(toManualState(participantId, data?.data, waId));
       } catch (error) {
-        if (activeChatRef.current?.participantId === participantId) setManualState(previous);
+        if (
+          activeChatRef.current?.participantId === participantId &&
+          activeChatRef.current?.waId === sourceWaId
+        )
+          setManualState(previous);
         console.error("Error updating manual state:", error);
       } finally {
         setIsTogglingManual(false);
@@ -340,57 +412,84 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
     [baseURL, manualState, toManualState]
   );
 
-  const reloadMessages = useCallback((days: number = 365) => {
-    const id = activeChatRef.current?.participantId;
-    if (!id) return;
-    fetchMessages(id, days);
-  }, [fetchMessages]);
+  const reloadMessages = useCallback(
+    (days: number = 365) => {
+      const active = activeChatRef.current;
+      const id = active?.participantId;
+      if (!id) return;
+      fetchMessages(id, days, active?.waId);
+    },
+    [fetchMessages]
+  );
 
   const fetchInbox = useCallback(
     async (query?: string, page: number = 1, perPage: number = 100) => {
+      const requestId = ++inboxRequestRef.current;
       try {
-        if (!axios.defaults.headers.common["x-wa-id"]) return;
+        const waIds = getSelectedWaIds();
+        if (!waIds.length) return;
 
         setIsFetchInbox(true);
         const params: any = { page, perPage };
         if (query) params.searchTerm = query;
 
-        const response = await axios.get(`${baseURL}/message-inbox`, { params });
+        const responses = await Promise.all(
+          waIds.map(async (waId) => ({
+            waId,
+            response: await axios.get(`${baseURL}/message-inbox`, {
+              params,
+              headers: { "x-wa-id": waId },
+            }),
+          }))
+        );
 
-        const pageItems: Inbox[] = (response.data?.data || []).map((v: InboxResponse) => {
-          const normalizedLastMessageStatus = String(v.last_message_status ?? "").toLowerCase();
-          const created = new Date(v.created_at);
-          const sameDay = new Date().toDateString() === created.toDateString();
-          const timeStamp = sameDay
-            ? created.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })
-            : created.toLocaleDateString("en-GB");
+        const pageItems: Inbox[] = responses.flatMap(({ waId, response }) =>
+          (response.data?.data || []).map((v: InboxResponse) => {
+            const normalizedLastMessageStatus = String(v.last_message_status ?? "").toLowerCase();
+            const created = new Date(v.created_at);
+            const sameDay = new Date().toDateString() === created.toDateString();
+            const timeStamp = sameDay
+              ? created.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                })
+              : created.toLocaleDateString("en-GB");
 
-          return {
-            id: v.id,
-            participantId: v.participant_id,
-            name: v.participant_name ?? v.participant_id,
-            image: "/assets/images/boy4.jpeg",
-            lastMessage:
-              v.message_text.length > 50 ? v.message_text.slice(0, 49) + "...." : v.message_text,
-            timestamp: timeStamp,
-            messageStatus: v.message_status === 1 ? "READ" : "DELIVERED",
-            lastMessageStatus:
-              normalizedLastMessageStatus === "read" ||
-              normalizedLastMessageStatus === "delivered" ||
-              normalizedLastMessageStatus === "sent" ||
-              normalizedLastMessageStatus === "failed"
-                ? normalizedLastMessageStatus
-                : undefined,
-            fromMe: v.from_me,
-            notificationsCount: v.unread_msg,
-            isPinned: !!v.is_pinned,
-            pinnedAt: v.pinned_at || null,
-            updatedAt: v.updated_at,
-          };
-        });
+            return {
+              // A participant may contact multiple WA lines, so both values form the UI identity.
+              id: `${waId}:${v.id}`,
+              waId,
+              participantId: v.participant_id,
+              name: v.participant_name ?? v.participant_id,
+              image: "/assets/images/boy4.jpeg",
+              lastMessage:
+                v.message_text.length > 50 ? v.message_text.slice(0, 49) + "...." : v.message_text,
+              timestamp: timeStamp,
+              messageStatus: v.message_status === 1 ? "READ" : "DELIVERED",
+              lastMessageStatus:
+                normalizedLastMessageStatus === "read" ||
+                normalizedLastMessageStatus === "delivered" ||
+                normalizedLastMessageStatus === "sent" ||
+                normalizedLastMessageStatus === "failed"
+                  ? normalizedLastMessageStatus
+                  : undefined,
+              fromMe: v.from_me,
+              notificationsCount: v.unread_msg,
+              isPinned: !!v.is_pinned,
+              pinnedAt: v.pinned_at || null,
+              updatedAt: v.updated_at,
+            };
+          })
+        );
 
-        const timeInfo = response.data?.timeInfo;
-        setLastUpdate(timeInfo?.updated_at || "");
+        const newestUpdate =
+          responses
+            .map(({ response }) => response.data?.timeInfo?.updated_at || "")
+            .sort()
+            .pop() || "";
+        if (requestId !== inboxRequestRef.current) return;
+        setLastUpdate(newestUpdate);
 
         // Merge pages first
         setInbox((prev) => {
@@ -401,75 +500,98 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
             : merged;
         });
 
-        setHasMore(pageItems.length >= perPage);
+        setHasMore(
+          responses.some(
+            ({ response }) =>
+              Array.isArray(response.data?.data) && response.data.data.length >= perPage
+          )
+        );
         setIsFetchInbox(false);
 
         // If active chat has new unread, refresh its messages
         pageItems.forEach((it) => {
-          const unread = it.participantId === activeChatRef.current?.participantId &&
+          const unread =
+            it.participantId === activeChatRef.current?.participantId &&
+            (!activeChatRef.current?.waId || it.waId === activeChatRef.current.waId) &&
             Number(it.notificationsCount) > 0;
-          if (unread) fetchMessages(it.participantId);
+          if (unread) fetchMessages(it.participantId, 365, it.waId);
         });
       } catch (error) {
-        setIsFetchInbox(false);
+        if (requestId === inboxRequestRef.current) setIsFetchInbox(false);
         console.error("Error fetching inbox:", error);
       }
     },
     [baseURL, fetchMessages]
   );
 
-  const handleChangeChat = useCallback((chat: Inbox) => {
-    setActiveChat(chat);
-    setReplyTarget(null);
-    setBookings(undefined);
-    setBookingEvents(undefined);
-    setManualState(undefined);
-    localStorage.setItem(LS_ACTIVE_CHAT, chat.participantId); // ✅ persist
-    fetchMessages(chat.participantId);
-    fetchManual(chat.participantId);
-  }, [fetchMessages, fetchManual]);
+  const handleChangeChat = useCallback(
+    (chat: Inbox) => {
+      setActiveChat(chat);
+      setReplyTarget(null);
+      setBookings(undefined);
+      setBookingEvents(undefined);
+      setManualState(undefined);
+      localStorage.setItem(LS_ACTIVE_CHAT, chat.participantId); // ✅ persist
+      localStorage.setItem(LS_ACTIVE_CHAT_WA_ID, chat.waId || "");
+      fetchMessages(chat.participantId, 365, chat.waId);
+      fetchManual(chat.participantId, chat.waId);
+    },
+    [fetchMessages, fetchManual]
+  );
 
   const handleFirstOpenChat = useCallback((condition: boolean) => {
     setFirstOpenChat(condition);
   }, []);
 
-  const handleSendMessage = useCallback(async (msg: MessagePayload) => {
-    try {
-      const payload = {
-        to: msg.to,
-        textMessage: msg.textMessage,
-        mediaType: msg.mediaType,
-        mediaId: msg.mediaId ?? null,
-        filePath: msg.filePath ?? null,
-        nonManual: msg.nonManual ?? false,
-        contextMessageId: msg.contextMessageId ?? null,
-      };
-      await axios.post(`${baseURL}/message/send`, payload);
-      setReplyTarget(null);
-      if (msg.to) {
-        fetchMessages(msg.to);
-        // Sending flips the thread to manual server-side unless nonManual.
-        fetchManual(msg.to);
+  const handleSendMessage = useCallback(
+    async (msg: MessagePayload) => {
+      try {
+        const payload = {
+          to: msg.to,
+          textMessage: msg.textMessage,
+          mediaType: msg.mediaType,
+          mediaId: msg.mediaId ?? null,
+          filePath: msg.filePath ?? null,
+          nonManual: msg.nonManual ?? false,
+          contextMessageId: msg.contextMessageId ?? null,
+        };
+        const headers = activeChatRef.current?.waId
+          ? { "x-wa-id": activeChatRef.current.waId }
+          : undefined;
+        await axios.post(`${baseURL}/message/send`, payload, { headers });
+        setReplyTarget(null);
+        if (msg.to) {
+          fetchMessages(msg.to, 365, activeChatRef.current?.waId);
+          // Sending flips the thread to manual server-side unless nonManual.
+          fetchManual(msg.to, activeChatRef.current?.waId);
+        }
+      } catch (error) {
+        console.error("Error sending message:", error);
       }
-    } catch (error) {
-      console.error("Error sending message:", error);
-    }
-  }, [baseURL, fetchMessages, fetchManual]);
+    },
+    [baseURL, fetchMessages, fetchManual]
+  );
 
-  const handleSearch = useCallback(async (query: string) => {
-    setSearchText(query);
-    setCurrentPage(1);
-    setHasMore(true);
+  const handleSearch = useCallback(
+    async (query: string) => {
+      setSearchText(query);
+      setCurrentPage(1);
+      setHasMore(true);
 
-    await fetchInbox(query.trim() === "" ? undefined : query, 1);
-  }, [fetchInbox]);
+      await fetchInbox(query.trim() === "" ? undefined : query, 1);
+    },
+    [fetchInbox]
+  );
 
-  const handleToggleSearch = useCallback((toggle: boolean) => {
-    setToggleSearch(toggle);
-    setCurrentPage(1);
-    setHasMore(true);
-    fetchInbox(searchText.trim() !== "" ? searchText : undefined, 1);
-  }, [fetchInbox, searchText]);
+  const handleToggleSearch = useCallback(
+    (toggle: boolean) => {
+      setToggleSearch(toggle);
+      setCurrentPage(1);
+      setHasMore(true);
+      fetchInbox(searchText.trim() !== "" ? searchText : undefined, 1);
+    },
+    [fetchInbox, searchText]
+  );
 
   const loadMore = useCallback(() => {
     setCurrentPage((prev) => {
@@ -483,9 +605,18 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     const tick = async () => {
       try {
-        if (!axios.defaults.headers.common["x-wa-id"] || !lastUpdateRef.current || isFetchInboxRef.current) return;
+        const waIds = getSelectedWaIds();
+        if (!waIds.length || !lastUpdateRef.current || isFetchInboxRef.current) return;
+        // In the aggregate view, a single timestamp cannot represent every line reliably.
+        // Refresh the current search directly; individual-line mode keeps the lightweight check.
+        if (waIds.length > 1) {
+          await fetchInbox(searchText.trim() !== "" ? searchText : undefined, 1);
+          return;
+        }
         const payload = { clientLastUpdate: lastUpdateRef.current };
-        const response = await axios.post(`${baseURL}/event-check-inbox`, payload);
+        const response = await axios.post(`${baseURL}/event-check-inbox`, payload, {
+          headers: { "x-wa-id": waIds[0] },
+        });
         const changed = !!response.data?.data;
         if (changed) {
           await fetchInbox(searchText.trim() !== "" ? searchText : undefined, 1);
@@ -495,14 +626,14 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
       }
     };
 
-    if (axios.defaults.headers.common["x-wa-id"]) tick();
+    if (getSelectedWaIds().length) tick();
     const id = setInterval(tick, 10000);
     return () => clearInterval(id);
   }, [baseURL, fetchInbox, searchText]);
 
   // Initial fetch (if WA id already set before this mounts)
   useEffect(() => {
-    if (axios.defaults.headers.common["x-wa-id"]) {
+    if (getSelectedWaIds().length) {
       fetchInbox();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -513,23 +644,32 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
     if (!inbox.length) return;
 
     const stored = localStorage.getItem(LS_ACTIVE_CHAT) || "";
+    const storedWaId = localStorage.getItem(LS_ACTIVE_CHAT_WA_ID) || "";
     if (!stored) {
       didRestoreActiveRef.current = true;
       return;
     }
 
-    const found = inbox.find((x) => x.participantId === stored);
+    const found = inbox.find(
+      (x) => x.participantId === stored && (!storedWaId || x.waId === storedWaId)
+    );
     if (found) {
       setActiveChat(found);
-      fetchMessages(found.participantId);
-      fetchManual(found.participantId);
+      fetchMessages(found.participantId, 365, found.waId);
+      fetchManual(found.participantId, found.waId);
     }
 
     didRestoreActiveRef.current = true;
   }, [inbox, fetchMessages, fetchManual]);
 
   const handleFileUpload = useCallback(
-    async (file: File, msg: string, type: string, nonManual: boolean, contextMessageId?: string | null) => {
+    async (
+      file: File,
+      msg: string,
+      type: string,
+      nonManual: boolean,
+      contextMessageId?: string | null
+    ) => {
       try {
         const formData = new FormData();
         formData.append("file", file);
@@ -539,6 +679,9 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
           ...(axios.defaults.headers.common as any),
           "Content-Type": "multipart/form-data",
         };
+        if (activeChatRef.current?.waId) {
+          uploadHeaders["x-wa-id"] = activeChatRef.current.waId;
+        }
 
         const uploadMedia = await axios.post(`${baseURL}/message/uploadMedia`, formData, {
           headers: uploadHeaders,
@@ -554,11 +697,11 @@ export default function ChatProvider({ children }: { children: React.ReactNode }
           contextMessageId: contextMessageId ?? null,
         };
 
-        await axios.post(`${baseURL}/message/send`, payload);
+        await axios.post(`${baseURL}/message/send`, payload, { headers: uploadHeaders });
         setReplyTarget(null);
         if (activeChatRef.current?.participantId) {
-          fetchMessages(activeChatRef.current.participantId);
-          fetchManual(activeChatRef.current.participantId);
+          fetchMessages(activeChatRef.current.participantId, 365, activeChatRef.current.waId);
+          fetchManual(activeChatRef.current.participantId, activeChatRef.current.waId);
         }
       } catch (error) {
         console.error("Error upload image", error);
