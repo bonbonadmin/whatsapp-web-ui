@@ -212,7 +212,7 @@ export const ReplyActionButton = styled.button`
   }
 `;
 
-export const TemplateMessageTooltip = styled.span`
+export const TemplateMessageTooltip = styled.div`
   background: #111b21;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 8px;

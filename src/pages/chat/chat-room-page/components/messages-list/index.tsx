@@ -279,7 +279,7 @@ const SingleMessage = forwardRef(
       ready: false,
     });
     const bubbleRef = useRef<HTMLDivElement | null>(null);
-    const templateTooltipRef = useRef<HTMLSpanElement | null>(null);
+    const templateTooltipRef = useRef<HTMLDivElement | null>(null);
     const closeModal = () => setModalOpen(false);
     const closeTemplateModal = () => setTemplateModalOpen(false);
 
@@ -306,6 +306,72 @@ const SingleMessage = forwardRef(
     const templateButtons = (
       Array.isArray(message.templateButtons) ? [...message.templateButtons] : []
     ).sort((a, b) => a.index - b.index);
+
+    const renderTemplateDetails = (interactive = false) => (
+      <>
+        {message.templateHeaderUrl && !isTemplateHeaderFailed && (
+          <img
+            src={message.templateHeaderUrl}
+            alt="Template header"
+            style={{
+              maxWidth: "100%",
+              maxHeight: "240px",
+              borderRadius: "8px",
+              objectFit: "cover",
+              display: "block",
+              marginBottom: 8,
+            }}
+            onError={() => setTemplateHeaderFailed(true)}
+          />
+        )}
+        <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{templateContent}</div>
+        {templateButtons.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 8 }}>
+            {templateButtons.map((button, position) => {
+              const type = String(button?.type || "").toUpperCase();
+              const text = button?.text || "";
+              const buttonStyle: CSSProperties = {
+                padding: "5px 8px",
+                borderRadius: 5,
+                border: "1px solid rgba(0, 0, 0, 0.14)",
+                background: "rgba(255, 255, 255, 0.38)",
+                color: "inherit",
+                fontSize: 12,
+                textAlign: "center",
+                textDecoration: "none",
+                overflowWrap: "anywhere",
+              };
+              const key = `${button?.index ?? position}-${type}-${text}`;
+              if (interactive && type === "URL" && button?.url) {
+                return (
+                  <a
+                    key={key}
+                    href={button.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={buttonStyle}
+                  >
+                    {text}
+                  </a>
+                );
+              }
+              if (interactive && type === "PHONE_NUMBER" && button?.phone_number) {
+                return (
+                  <a key={key} href={`tel:${button.phone_number}`} style={buttonStyle}>
+                    {text}
+                  </a>
+                );
+              }
+              return (
+                <span key={key} style={buttonStyle}>
+                  {text}
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </>
+    );
 
     const saveBubbleRef = (element: HTMLDivElement | null) => {
       bubbleRef.current = element;
@@ -480,69 +546,7 @@ const SingleMessage = forwardRef(
           )}
 
           {isTemplate ? (
-            <div>
-              {message.templateHeaderUrl && !isTemplateHeaderFailed && (
-                <img
-                  src={message.templateHeaderUrl}
-                  alt="Template header"
-                  style={{
-                    maxWidth: "200px",
-                    maxHeight: "200px",
-                    borderRadius: "8px",
-                    objectFit: "cover",
-                    display: "block",
-                    marginBottom: 8,
-                  }}
-                  onError={() => setTemplateHeaderFailed(true)}
-                />
-              )}
-              <span>{templateContent}</span>
-              {templateButtons.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 8 }}>
-                  {templateButtons.map((button, position) => {
-                    const type = String(button?.type || "").toUpperCase();
-                    const text = button?.text || "";
-                    const buttonStyle: CSSProperties = {
-                      padding: "5px 8px",
-                      borderRadius: 5,
-                      border: "1px solid rgba(0, 0, 0, 0.14)",
-                      background: "rgba(255, 255, 255, 0.38)",
-                      color: "inherit",
-                      fontSize: 12,
-                      textAlign: "center",
-                      textDecoration: "none",
-                      overflowWrap: "anywhere",
-                    };
-                    const key = `${button?.index ?? position}-${type}-${text}`;
-                    if (type === "URL" && button?.url) {
-                      return (
-                        <a
-                          key={key}
-                          href={button.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={buttonStyle}
-                        >
-                          {text}
-                        </a>
-                      );
-                    }
-                    if (type === "PHONE_NUMBER" && button?.phone_number) {
-                      return (
-                        <a key={key} href={`tel:${button.phone_number}`} style={buttonStyle}>
-                          {text}
-                        </a>
-                      );
-                    }
-                    return (
-                      <span key={key} style={buttonStyle}>
-                        {text}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <span>{message.body}</span>
           ) : message.messageType === "image" ? (
             <div>
               <img
@@ -620,7 +624,7 @@ const SingleMessage = forwardRef(
                 visibility: templateTooltipPosition.ready ? "visible" : "hidden",
               }}
             >
-              {templateContent}
+              {renderTemplateDetails()}
             </TemplateMessageTooltip>,
             document.body
           )}
@@ -647,7 +651,7 @@ const SingleMessage = forwardRef(
                     ×
                   </button>
                 </div>
-                <div style={modalStyles.templateMessageBody}>{templateContent}</div>
+                <div style={modalStyles.templateMessageBody}>{renderTemplateDetails(true)}</div>
               </div>
             </div>,
             document.body
