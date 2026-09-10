@@ -11,6 +11,8 @@ export type Message = {
   isOpponent: boolean;
   messageType?: string;
   templateMessageText?: string | null;
+  templateHeaderUrl?: string | null;
+  templateButtons?: TemplateButton[];
   mediaLocation?: string;
   fullTimestamp?: string;
   functionName?: string;
@@ -28,6 +30,14 @@ export type Message = {
   contextMessageId?: string | null;
   contextFrom?: string | null;
   quotedMessage?: QuotedMessage | null;
+};
+
+export type TemplateButton = {
+  index: number;
+  type: string;
+  text: string;
+  url?: string;
+  phone_number?: string;
 };
 
 export type QuotedMessage = {
@@ -50,6 +60,8 @@ export type MessageResponse = {
   message_text: string;
   message_type: string;
   template_message_text?: string | null;
+  template_header_url?: string | null;
+  template_buttons?: TemplateButton[] | null;
   media_location: string;
   message_status: number;
   participant_message_status: string;
@@ -69,15 +81,15 @@ export type MessageResponse = {
 };
 
 export type ToolApiItem = {
-  id: string;                     // e.g. "tool-<tools.id>-<tool_call_id>"
+  id: string; // e.g. "tool-<tools.id>-<tool_call_id>"
   tools_row_id: number;
   created_at: string;
   updated_at: string;
-  message_type: 'tool';
+  message_type: "tool";
   function_name: string;
   function_args: string | null;
-  chat_response_item?: any;       // raw OpenAI tool item
-  tool_output?: any;              // matched output by tool_call_id
+  chat_response_item?: any; // raw OpenAI tool item
+  tool_output?: any; // matched output by tool_call_id
   status?: string | null;
 };
 

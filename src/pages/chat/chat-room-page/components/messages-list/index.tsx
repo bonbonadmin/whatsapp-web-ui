@@ -40,17 +40,17 @@ const ToolEventRow = forwardRef<HTMLDivElement, ToolEventRowProps>((p, ref) => {
     typeof p.functionArgs === "string"
       ? p.functionArgs
       : p.functionArgs
-        ? JSON.stringify(p.functionArgs)
-        : "";
+      ? JSON.stringify(p.functionArgs)
+      : "";
 
   const outText =
     typeof p.toolOutput === "string"
       ? p.toolOutput
       : p.toolOutput?.output != null
-        ? String(p.toolOutput.output)
-        : p.toolOutput
-          ? JSON.stringify(p.toolOutput)
-          : "";
+      ? String(p.toolOutput.output)
+      : p.toolOutput
+      ? JSON.stringify(p.toolOutput)
+      : "";
 
   const collapsedBlock: CSSProperties = {
     whiteSpace: "nowrap",
@@ -173,7 +173,10 @@ export default function MessagesList({
 
     targetMessage.scrollIntoView({ behavior: "smooth", block: "center" });
     setFocusedMessageId(messageId);
-    window.setTimeout(() => setFocusedMessageId((current) => (current === messageId ? "" : current)), 1400);
+    window.setTimeout(
+      () => setFocusedMessageId((current) => (current === messageId ? "" : current)),
+      1400
+    );
   };
 
   // ===== waId handling for media URLs =====
@@ -237,7 +240,9 @@ export default function MessagesList({
               key={message.id}
               message={message}
               ref={saveRef}
-              isHighlighted={(isSearchOpen && message.id === selectedSearchId) || focusedMessageId === message.id}
+              isHighlighted={
+                (isSearchOpen && message.id === selectedSearchId) || focusedMessageId === message.id
+              }
               mediaUrl={fullMediaUrl(message.mediaLocation)}
               onQuotedMessageClick={scrollToMessage}
               onReplyToMessage={chatCtx.onReplyToMessage}
@@ -265,6 +270,7 @@ const SingleMessage = forwardRef(
     const { message, isHighlighted, mediaUrl = "", onQuotedMessageClick, onReplyToMessage } = props;
     const [isModalOpen, setModalOpen] = useState(false);
     const [isTemplateModalOpen, setTemplateModalOpen] = useState(false);
+    const [isTemplateHeaderFailed, setTemplateHeaderFailed] = useState(false);
     const [isTemplateTooltipOpen, setTemplateTooltipOpen] = useState(false);
     const [templateTooltipPosition, setTemplateTooltipPosition] = useState({
       left: 16,
@@ -281,8 +287,9 @@ const SingleMessage = forwardRef(
       ? message.mediaLocation.substring(message.mediaLocation.lastIndexOf("/") + 1)
       : "";
 
-    const participantStatus = String((message as any).participantMessageStatus ?? (message as any).participant_message_status ?? "")
-      .toLowerCase();
+    const participantStatus = String(
+      (message as any).participantMessageStatus ?? (message as any).participant_message_status ?? ""
+    ).toLowerCase();
 
     const isFailed = message.messageStatus === "failed";
     const quotedMessage = message.quotedMessage;
@@ -290,10 +297,15 @@ const SingleMessage = forwardRef(
     const quotedAuthor = quotedMessage?.missing
       ? "Quoted message"
       : quotedMessage?.fromMe === 1
-        ? "You"
-        : quotedMessage?.participantName || "Customer";
+      ? "You"
+      : quotedMessage?.participantName || "Customer";
     const quotedText = getQuotedMessageText(quotedMessage);
     const templateTooltipId = `template-message-${message.id}-tooltip`;
+    const templateContent = message.templateMessageText?.trim() || message.body;
+    const isTemplate = message.messageType === "template";
+    const templateButtons = (
+      Array.isArray(message.templateButtons) ? [...message.templateButtons] : []
+    ).sort((a, b) => a.index - b.index);
 
     const saveBubbleRef = (element: HTMLDivElement | null) => {
       bubbleRef.current = element;
@@ -357,7 +369,8 @@ const SingleMessage = forwardRef(
         const tooltipRect = tooltip.getBoundingClientRect();
         const aboveSpace = Math.max(0, bubbleRect.top - gap - boundaryTop);
         const belowSpace = Math.max(0, boundaryBottom - bubbleRect.bottom - gap);
-        const placeAbove = aboveSpace >= Math.min(tooltipRect.height, 160) || aboveSpace >= belowSpace;
+        const placeAbove =
+          aboveSpace >= Math.min(tooltipRect.height, 160) || aboveSpace >= belowSpace;
         const availableHeight = placeAbove ? aboveSpace : belowSpace;
         const maxHeight = Math.max(80, Math.min(360, availableHeight));
         const visibleHeight = Math.min(tooltipRect.height, maxHeight);
@@ -382,20 +395,20 @@ const SingleMessage = forwardRef(
     }, [isTemplateTooltipOpen, message.templateMessageText]);
 
     const openTemplatePreview = (event: React.MouseEvent<HTMLDivElement>) => {
-      if (message.messageType !== "template" || !message.templateMessageText) return;
+      if (!isTemplate || !templateContent) return;
       if ((event.target as HTMLElement).closest("button, a")) return;
       setTemplateModalOpen(true);
     };
 
     const handleTemplatePreviewKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if (message.messageType !== "template" || !message.templateMessageText) return;
+      if (!isTemplate || !templateContent) return;
       if (event.key !== "Enter" && event.key !== " ") return;
       event.preventDefault();
       setTemplateModalOpen(true);
     };
 
     const showTemplateTooltip = () => {
-      if (message.messageType !== "template" || !message.templateMessageText) return;
+      if (!isTemplate || !templateContent) return;
       setTemplateTooltipPosition((current) => ({ ...current, ready: false }));
       setTemplateTooltipOpen(true);
     };
@@ -411,12 +424,8 @@ const SingleMessage = forwardRef(
             border: isHighlighted ? "1px solid #FFD700" : "none",
             paddingLeft: message.messageType === "template" ? "30px" : undefined,
           }}
-          tabIndex={message.messageType === "template" && message.templateMessageText ? 0 : undefined}
-          aria-describedby={
-            message.messageType === "template" && message.templateMessageText
-              ? templateTooltipId
-              : undefined
-          }
+          tabIndex={isTemplate && templateContent ? 0 : undefined}
+          aria-describedby={isTemplate && templateContent ? templateTooltipId : undefined}
           onClick={openTemplatePreview}
           onKeyDown={handleTemplatePreviewKeyDown}
           onMouseEnter={showTemplateTooltip}
@@ -424,7 +433,7 @@ const SingleMessage = forwardRef(
           onFocus={showTemplateTooltip}
           onBlur={() => setTemplateTooltipOpen(false)}
         >
-          {message.messageType === "template" && (
+          {isTemplate && (
             <div
               style={{
                 position: "absolute",
@@ -470,7 +479,71 @@ const SingleMessage = forwardRef(
             </QuotedMessagePreview>
           )}
 
-          {message.messageType === "image" ? (
+          {isTemplate ? (
+            <div>
+              {message.templateHeaderUrl && !isTemplateHeaderFailed && (
+                <img
+                  src={message.templateHeaderUrl}
+                  alt="Template header"
+                  style={{
+                    maxWidth: "200px",
+                    maxHeight: "200px",
+                    borderRadius: "8px",
+                    objectFit: "cover",
+                    display: "block",
+                    marginBottom: 8,
+                  }}
+                  onError={() => setTemplateHeaderFailed(true)}
+                />
+              )}
+              <span>{templateContent}</span>
+              {templateButtons.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 8 }}>
+                  {templateButtons.map((button, position) => {
+                    const type = String(button?.type || "").toUpperCase();
+                    const text = button?.text || "";
+                    const buttonStyle: CSSProperties = {
+                      padding: "5px 8px",
+                      borderRadius: 5,
+                      border: "1px solid rgba(0, 0, 0, 0.14)",
+                      background: "rgba(255, 255, 255, 0.38)",
+                      color: "inherit",
+                      fontSize: 12,
+                      textAlign: "center",
+                      textDecoration: "none",
+                      overflowWrap: "anywhere",
+                    };
+                    const key = `${button?.index ?? position}-${type}-${text}`;
+                    if (type === "URL" && button?.url) {
+                      return (
+                        <a
+                          key={key}
+                          href={button.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={buttonStyle}
+                        >
+                          {text}
+                        </a>
+                      );
+                    }
+                    if (type === "PHONE_NUMBER" && button?.phone_number) {
+                      return (
+                        <a key={key} href={`tel:${button.phone_number}`} style={buttonStyle}>
+                          {text}
+                        </a>
+                      );
+                    }
+                    return (
+                      <span key={key} style={buttonStyle}>
+                        {text}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : message.messageType === "image" ? (
             <div>
               <img
                 src={mediaUrl}
@@ -522,17 +595,19 @@ const SingleMessage = forwardRef(
                   message.messageStatus === "failed"
                     ? "cross"
                     : message.messageStatus === "delivered" || message.messageStatus === "read"
-                      ? "doubleTick"
-                      : "singleTick"
+                    ? "doubleTick"
+                    : "singleTick"
                 }
-                className={`chat__msg-status-icon ${message.messageStatus === "read" ? "chat__msg-status-icon--blue" : ""
-                  }`}
+                className={`chat__msg-status-icon ${
+                  message.messageStatus === "read" ? "chat__msg-status-icon--blue" : ""
+                }`}
               />
             )}
           </ChatMessageFooter>
         </ChatMessage>
 
-        {isTemplateTooltipOpen && message.templateMessageText &&
+        {isTemplateTooltipOpen &&
+          templateContent &&
           createPortal(
             <TemplateMessageTooltip
               ref={templateTooltipRef}
@@ -545,12 +620,13 @@ const SingleMessage = forwardRef(
                 visibility: templateTooltipPosition.ready ? "visible" : "hidden",
               }}
             >
-              {message.templateMessageText}
+              {templateContent}
             </TemplateMessageTooltip>,
             document.body
           )}
 
-        {isTemplateModalOpen && message.templateMessageText &&
+        {isTemplateModalOpen &&
+          templateContent &&
           createPortal(
             <div style={modalStyles.templateOverlay} onClick={closeTemplateModal}>
               <div
@@ -571,7 +647,7 @@ const SingleMessage = forwardRef(
                     ×
                   </button>
                 </div>
-                <div style={modalStyles.templateMessageBody}>{message.templateMessageText}</div>
+                <div style={modalStyles.templateMessageBody}>{templateContent}</div>
               </div>
             </div>,
             document.body
@@ -649,7 +725,8 @@ const modalStyles: Record<string, CSSProperties> = {
     inset: 0,
     width: "100vw",
     height: "100dvh",
-    padding: "calc(env(safe-area-inset-top, 0px) + 20px) 20px calc(env(safe-area-inset-bottom, 0px) + 20px)",
+    padding:
+      "calc(env(safe-area-inset-top, 0px) + 20px) 20px calc(env(safe-area-inset-bottom, 0px) + 20px)",
     boxSizing: "border-box",
     backgroundColor: "rgba(0, 0, 0, 0.72)",
     display: "flex",
