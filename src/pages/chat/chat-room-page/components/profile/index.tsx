@@ -296,7 +296,7 @@ export default function ProfileSection(props: ProfileSectionProps) {
       </ActionSection> */}
       <ActionSection onClick={handleLoadAll} style={{ cursor: "pointer" }}>
         <Icon id="sync" className="icon" />
-        <ActionText>Load all chats</ActionText>
+        <ActionText>Load older messages</ActionText>
       </ActionSection>
       {/* <ActionSection>
         <Icon id="delete" className="icon" />

@@ -18,6 +18,33 @@ export const wrapperStyles = css`
   z-index: 9;
 `;
 
+export const HistoryAction = styled.button`
+  position: relative;
+  z-index: 9;
+  display: block;
+  margin: 8px auto 16px;
+  padding: 9px 16px;
+  border: 1px solid ${(props) => props.theme.common.subHeadingColor};
+  border-radius: 18px;
+  background: ${(props) => props.theme.receivedMessage.bgColor};
+  color: ${(props) => props.theme.receivedMessage.textColor};
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+
+  &:disabled { opacity: 0.6; cursor: wait; }
+  &:focus-visible { outline: 2px solid #00a884; outline-offset: 2px; }
+`;
+
+export const HistoryNotice = styled.div`
+  position: relative;
+  z-index: 9;
+  text-align: center;
+  padding: 8px;
+  background: ${(props) => props.theme.receivedMessage.bgColor};
+  color: ${(props) => props.theme.receivedMessage.textColor};
+`;
+
 export const DateWrapper = styled.div`
   text-align: center;
   margin: 10px 0 14px;

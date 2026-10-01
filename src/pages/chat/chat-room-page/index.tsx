@@ -45,7 +45,8 @@ export default function ChatRoomPage() {
     }
   }, [isSearchOpen]);
 
-  const handleClickSearch = (id: string) => {
+  const handleClickSearch = async (id: string) => {
+    await chatCtx.revealMessage(id);
     setSelectedSearchId(id);
   };
 
@@ -70,7 +71,16 @@ export default function ChatRoomPage() {
                 justifyContent: "center",
               }}
             >
-              <p>No messages</p>
+              <div role="status">
+                <p>
+                  {chatCtx.isLoadingMessages
+                    ? "Loading messages…"
+                    : chatCtx.messageError || "No messages"}
+                </p>
+                {chatCtx.messageError && (
+                  <button onClick={() => chatCtx.reloadMessages()}>Retry</button>
+                )}
+              </div>
             </div>
             <FooterContainer>
               <Footer />
@@ -85,12 +95,14 @@ export default function ChatRoomPage() {
             isOpen={isProfileOpen}
             onClose={() => setIsProfileOpen(false)}
           >
-            <ProfileSection
-              name={activeInbox?.name ?? ""}
-              image={activeInbox?.image ?? ""}
-              phoneNumber={activeInbox?.participantId ?? ""}
-              events={chatCtx.bookingEvents}
-            />
+            {isProfileOpen && (
+              <ProfileSection
+                name={activeInbox?.name ?? ""}
+                image={activeInbox?.image ?? ""}
+                phoneNumber={activeInbox?.participantId ?? ""}
+                events={chatCtx.bookingEvents}
+              />
+            )}
           </Sidebar>
         </Container>
       </ChatLayout>
@@ -146,12 +158,14 @@ export default function ChatRoomPage() {
           isOpen={isProfileOpen}
           onClose={() => setIsProfileOpen(false)}
         >
-          <ProfileSection
-            name={activeInbox?.name ?? ""}
-            image={activeInbox?.image ?? ""}
-            phoneNumber={activeInbox?.participantId ?? ""}
-            events={chatCtx.bookingEvents}
-          />
+          {isProfileOpen && (
+            <ProfileSection
+              name={activeInbox?.name ?? ""}
+              image={activeInbox?.image ?? ""}
+              phoneNumber={activeInbox?.participantId ?? ""}
+              events={chatCtx.bookingEvents}
+            />
+          )}
         </Sidebar>
       </Container>
     </ChatLayout>

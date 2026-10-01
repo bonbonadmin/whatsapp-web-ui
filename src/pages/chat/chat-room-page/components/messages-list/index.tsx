@@ -13,6 +13,8 @@ import {
   Date,
   DateWrapper,
   EncryptionMessage,
+  HistoryAction,
+  HistoryNotice,
   MessageGroup,
   QuotedMessageAuthor,
   QuotedMessagePreview,
@@ -158,7 +160,7 @@ export default function MessagesList({
         targetMessage.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     }
-    if (shouldScrollToBottom) {
+    if (shouldScrollToBottom && !isSearchOpen) {
       const targetMessage = messageRefs.current[lastMessageId];
       if (targetMessage) {
         targetMessage.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -166,8 +168,10 @@ export default function MessagesList({
     }
   }, [selectedSearchId, isSearchOpen, shouldScrollToBottom, lastMessageId]);
 
-  const scrollToMessage = (messageId?: string) => {
+  const scrollToMessage = async (messageId?: string) => {
     if (!messageId) return;
+    if (!messageRefs.current[messageId]) await chatCtx.revealMessage(messageId);
+    requestAnimationFrame(() => {
     const targetMessage = messageRefs.current[messageId];
     if (!targetMessage) return;
 
@@ -177,6 +181,7 @@ export default function MessagesList({
       () => setFocusedMessageId((current) => (current === messageId ? "" : current)),
       1400
     );
+    });
   };
 
   // ===== waId handling for media URLs =====
@@ -213,6 +218,18 @@ export default function MessagesList({
         or listen to them. Click to learn more.
       </EncryptionMessage>
 
+      {chatCtx.messageError && <HistoryNotice role="alert">{chatCtx.messageError} <HistoryAction onClick={() => chatCtx.reloadMessages()}>Retry</HistoryAction></HistoryNotice>}
+      {chatCtx.viewingHistory && <HistoryAction disabled={chatCtx.isLoadingMessages} onClick={async () => {
+        await chatCtx.returnToLatest();
+        requestAnimationFrame(() => { const el = containerRef.current as unknown as HTMLDivElement; if (el) el.scrollTop = el.scrollHeight; });
+      }}>Return to latest messages</HistoryAction>}
+      {chatCtx.hasOlderMessages && <HistoryAction disabled={chatCtx.isLoadingMessages} onClick={async () => {
+        const el = containerRef.current as unknown as HTMLDivElement;
+        const previousHeight = el?.scrollHeight || 0;
+        const previousTop = el?.scrollTop || 0;
+        await chatCtx.loadOlderMessages();
+        requestAnimationFrame(() => { if (el) el.scrollTop = previousTop + el.scrollHeight - previousHeight; });
+      }}>{chatCtx.isLoadingMessages ? "Loading…" : "Load older messages"}</HistoryAction>}
       <MessageGroup>
         {listMessages.map((message) => {
           const saveRef = (el: HTMLDivElement | null) => {
@@ -551,6 +568,8 @@ const SingleMessage = forwardRef(
             <div>
               <img
                 src={mediaUrl}
+                loading="lazy"
+                decoding="async"
                 alt="img"
                 style={{
                   maxWidth: "200px",

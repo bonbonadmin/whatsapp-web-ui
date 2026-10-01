@@ -1,4 +1,4 @@
-import React, { CSSProperties, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useChatContext } from "../../context/chat"; // Adjust the import path
 import Icon from "common/components/icons";
 import { useAppTheme } from "common/theme";
@@ -12,7 +12,7 @@ export default function SearchField(props: SearchFieldProps) {
   const { placeholder, ...rest } = props;
   const { onSearch, searchText, isFetchInbox } = useChatContext();
   const [inputValue, setInputValue] = useState(searchText);
-  const [isDisabled, setIsDisabled] = useState(false);
+
   const theme = useAppTheme();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -26,8 +26,8 @@ export default function SearchField(props: SearchFieldProps) {
   };
 
   useEffect(() => {
-    setIsDisabled(isFetchInbox);
-  }, [isFetchInbox]);
+    setInputValue(searchText);
+  }, [searchText]);
 
   // Dynamic Styles Based on Theme
   const localStyles: Record<string, React.CSSProperties> = {
@@ -71,9 +71,9 @@ export default function SearchField(props: SearchFieldProps) {
           <Icon id="search" aria-hidden="true" style={localStyles.searchIcon} />
         </div>
         <input
-          disabled={isDisabled}
+          aria-busy={isFetchInbox}
           type="text"
-          placeholder={placeholder ?? "Search"}
+          placeholder={placeholder ?? "Search, name: or msg:"}
           value={inputValue}
           onChange={handleInputChange}
           style={localStyles.searchInput}

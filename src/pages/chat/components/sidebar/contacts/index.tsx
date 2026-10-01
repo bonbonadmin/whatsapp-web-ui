@@ -1,5 +1,5 @@
 // /pages/chat/components/sidebar/contacts/index.tsx
-import { useState } from "react";
+import { memo, useState } from "react";
 import Icon from "common/components/icons";
 import { Inbox } from "common/types/common.type";
 import {
@@ -22,7 +22,7 @@ type InboxContactProps = {
   onTogglePin?: (participantId: string, next: boolean, waId?: string) => void;
 };
 
-export default function InboxContact(props: InboxContactProps) {
+function InboxContact(props: InboxContactProps) {
   const { onChangeChat, isActive, onTogglePin } = props;
   const { name, lastMessage, timestamp } = props.inbox;
 
@@ -200,3 +200,5 @@ function Trailing(props: TrailingProps) {
     </div>
   );
 }
+
+export default memo(InboxContact);

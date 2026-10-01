@@ -1,5 +1,5 @@
 import { useChatContext } from "pages/chat/context/chat";
-import React, { useState, CSSProperties, useEffect } from "react";
+import React, { useState, CSSProperties } from "react";
 
 const localStyles: Record<string, CSSProperties> = {
   toggleButton: {
@@ -36,9 +36,9 @@ const localStyles: Record<string, CSSProperties> = {
 };
 
 export default function ToggleButton() {
-  const { onToggleSearch, isFetchInbox } = useChatContext();
+  const { onToggleSearch } = useChatContext();
   const [isActive, setIsActive] = useState(false);
-  const [isDisabled, setIsDisabled] = useState(false);
+  const isDisabled = false;
 
   const toggleButton = () => {
     const toggle: boolean = !isActive;
@@ -46,16 +46,11 @@ export default function ToggleButton() {
     onToggleSearch(toggle);
   };
 
-  useEffect(() => {
-    setIsDisabled(isFetchInbox);
-  }, [isFetchInbox]);
-
   return (
     <div
       style={{
         ...localStyles.toggleButton,
         ...(isActive ? localStyles.active : localStyles.inactive),
-        ...(isDisabled && { backgroundColor: "#e0e0e0", cursor: "not-allowed" }),
       }}
       onClick={!isDisabled ? toggleButton : undefined}
       aria-label="Toggle Menu"

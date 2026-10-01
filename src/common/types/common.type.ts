@@ -33,9 +33,12 @@ export type Inbox = {
   isPinned?: boolean;
   pinnedAt?: string | null;
   isOnline?: boolean;
+  searchRank?: number;
 };
 
 export type InboxResponse = {
+  display_phone_id?: string;
+  search_rank?: number;
   id: string;
   message_id: string;
   participant_id: string;

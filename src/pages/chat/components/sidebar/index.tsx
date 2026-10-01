@@ -90,8 +90,8 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
 
   const SCROLL_KEY = useMemo(() => {
     const wa = selectedWaId || "default";
-    return `chat:sidebarScrollTop:${wa}`;
-  }, [selectedWaId]);
+    return `chat:sidebarScrollTop:${wa}:${chatCtx.searchText}`;
+  }, [selectedWaId, chatCtx.searchText]);
 
   const saveScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -104,7 +104,7 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
     if (!el) return;
 
     const saved = sessionStorage.getItem(SCROLL_KEY);
-    if (!saved) return;
+    if (!saved) { el.scrollTop = 0; return; }
 
     const n = Number(saved);
     if (Number.isNaN(n)) return;
@@ -140,8 +140,7 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
       else delete axios.defaults.headers.common["x-wa-id"];
 
       // Keep UX stable: close search toggle (optional) then re-run search with current text
-      chatCtx.onToggleSearch(false);
-      chatCtx.onSearch(chatCtx.searchText || "");
+      chatCtx.initializeInbox();
 
       // Restore scroll for this WA line (after inbox renders)
       restoreScroll();
@@ -167,10 +166,7 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
         delete axios.defaults.headers.common["x-wa-id"];
       }
 
-      // NOTE: do NOT force-clear/reload here.
-      // Let ChatProvider handle initial fetch / polling.
-      // If you *do* want to fetch immediately, do it via chatCtx.onSearch(...)
-      // after you update ChatProvider to not clear inbox.
+      chatCtx.initializeInbox();
     };
 
     if (cached) {
@@ -233,7 +229,7 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
       const basePinned = normBool(pick(x, ["isPinned", "is_pinned"], false));
       const basePinnedAt = pick<string | null>(x, ["pinnedAt", "pinned_at"], null);
       const baseLastTs =
-        pick<string>(x, ["lastMessageAt", "last_message_at"]) ??
+        pick<string>(x, ["timestamp", "lastMessageAt", "last_message_at"]) ??
         pick<string>(x, ["createdAt", "created_at"]) ??
         pick<string>(x, ["updatedAt", "updated_at"]) ??
         null;
@@ -276,6 +272,9 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
   const sortedInbox: Inbox[] = useMemo(() => {
     const arr = [...mergedInbox];
     arr.sort((a: any, b: any) => {
+      if (chatCtx.searchText.trim()) {
+        return (a.searchRank || 0) - (b.searchRank || 0) || toMillis(b.timestamp) - toMillis(a.timestamp) || a.id.localeCompare(b.id);
+      }
       const ap = a.isPinned ? 1 : 0;
       const bp = b.isPinned ? 1 : 0;
       if (ap !== bp) return bp - ap;
@@ -289,7 +288,7 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
       return bt - at;
     });
     return arr;
-  }, [mergedInbox]);
+  }, [mergedInbox, chatCtx.searchText]);
 
   // Optimistic toggle with rollback
   const togglePin = async (participantId: string, next: boolean, sourceWaId?: string) => {
@@ -429,6 +428,8 @@ export default function Sidebar(props: { mobileVisible?: boolean }) {
         </div>
       </div>
 
+      {chatCtx.inboxError && <p role="alert" style={{ padding: "0 16px" }}>{chatCtx.inboxError}</p>}
+      {chatCtx.isFetchInbox && <p role="status" style={{ padding: "0 16px", fontSize: 12 }}>Loading chats…</p>}
       <ContactContainer id="scrollableDiv" ref={scrollRef} onScroll={saveScroll}>
         <InfiniteScroll
           dataLength={sortedInbox.length}
